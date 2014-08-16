@@ -287,10 +287,12 @@ class ASTVisitor :
         self.writer = Writer()
         self.writer.section('top')
         self.writer.section('includes')
+        self.writer.section('fndecls')
         self.writer.section('modinit')
         self.writer.section('modinit.head')
         self.writer.section('modinit.body')
         self.writer.section('modinit.foot')
+        self.writer.section('fndefs')
         self.writer.write('top', '/* AUTO-GENERATED FILE - DO NOT HAND EDIT! */\n')
         self.writer.write('includes',
                           '#include <piftest.h>\n')
@@ -334,14 +336,28 @@ class ASTVisitor :
         if path == '' : path = name
         else : path = path + '.' + name
         self.context.unit_path = path
+        test_func = get_test_func(path)
         self.writer.write('modinit.body',
-                          'pif_test_register("%s");\n' % path)
+                          'pif_test_register("%s", %s);\n' %
+                          (path, test_func))
+        self.writer.write('fndecls',
+                          'static void %s ( void );\n' % test_func)
+        self.writer.write('fndefs',
+                          'static void %s ( void )\n' % test_func,
+                          '{\n')
+        # self.writer.write('fndefs', code)
+        self.writer.write('fndefs',
+                          '}\n')
         
 
 # get_module_init_func:
 def get_module_init_func (modname) :
     return '__%s__module_init' % modname
 
+# get_test_func:
+def get_test_func (path) :
+    return '__%s__test_func' % path.replace('.', '_')
+    
 # main:
 def main () :
     # create the config
