@@ -483,14 +483,21 @@ def proc_gen_main (cfg, dest) :
     w.section('fndecls')
     w.section('main')
     w.section('main.head')
+    w.section('main.decls')
     w.section('main.init')
     w.section('main.body')
     w.section('main.foot')
+    w.write('includes',
+            '#include <piftest.h>\n')
     w.write('main.head',
             'int main ()\n',
             '{\n')
     w.write('main.foot',
             '}\n')
+    w.write('main.decls',
+            'PifSuite *suite;\n')
+    w.write('main.init',
+            'suite = pif_suite_new("%s");\n' % cfg.suite)
     for mod in cfg.modules :
         init_func = get_module_init_func(mod)
         w.write('fndecls', 'void %s ( void );\n' % init_func)
