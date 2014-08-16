@@ -4,6 +4,9 @@ AM_INIT_AUTOMAKE
 # fix default CFLAGS
 : ${CFLAGS:=-g -Wall}
 
+# define some dirs
+AC_SUBST([pkgconfigdir], '${libdir}/pkgconfig')
+
 AC_PROG_CC
 LT_INIT
 
@@ -23,6 +26,7 @@ AC_CONFIG_FILES([ \
   piftest/Makefile \
   test/Makefile \
 ])
+AC_CONFIG_FILES([piftest.pc])
 AC_CONFIG_FILES([bin/piftest], [chmod +x bin/piftest])
 AC_CONFIG_FILES([test/piftest.conf])
 AC_OUTPUT

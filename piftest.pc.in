@@ -1,0 +1,10 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+includedir=@includedir@
+libdir=@libdir@
+
+Name: piftest
+Description: The perfectly insane framework.
+Version: 0.0.0
+Cflags: -I${includedir}
+Libs: -L${libdir} -lpiftest
