@@ -1,7 +1,7 @@
 #!@PYTHON@
 # -*- python -*-
 
-import sys, os, getopt, configparser
+import sys, os, getopt, configparser, subprocess, re, pprint
 
 # trace:
 def trace (msg) :
@@ -83,6 +83,76 @@ class WRule :
         for c in self.recipe :
             f.write('\t%s\n' % c)
 
+# Token:
+class Token :
+
+    def __init__ (self, tp, val='') :
+        self.tp = tp
+        self.val = val
+
+    def __repr__ (self) :
+        return '<%s "%s">' % (self.tp, self.val.replace('\n', '\\n'))
+
+# Parser:
+class Parser :
+
+    RE_LOCATION = re.compile(r'#\s+(?P<LNO>\d+)\s+"(?P<FNAME>[^"]*)".*$')
+
+    # parse:
+    def parse (self, fin) :
+        self.init(fin)
+        ast = self.parse_input()
+        return ast
+
+    # init:
+    def init (self, fin) :
+        self.fin = fin
+        self.tokbuf = []
+        self.pos = 0
+        self.buffer = ''
+        
+    # parse_input:
+    def parse_input (self) :
+        tok = self.look()
+        if tok.tp == 'END' :
+            return ('unit', (), '', None, None, None, ())
+        else :
+            assert 0, tok
+
+    # lex:
+    def lex (self) :
+        if self.tokbuf :
+            tok = self.tokbuf.pop()
+        else :
+            tok = self.__lex()
+        return tok
+
+    # unlex:
+    def unlex (self, tok) :
+        self.tokbuf.append(tok)
+
+    # look:
+    def look (self) :
+        tok = self.lex()
+        self.unlex(tok)
+        return tok
+
+    # __lex:
+    def __lex (self) :
+        # feed the buffer
+        while self.pos >= len(self.buffer) :
+            self.pos = 0
+            self.buffer = self.fin.readline()
+            if self.buffer == '' :
+                return Token('END')
+            m = Parser.RE_LOCATION.match(self.buffer)
+            if m is not None :
+                lno = int(m.group('LNO'))
+                fname = m.group('FNAME')
+                # trace("[TODO] location: %d, '%s'" % (lno, fname))
+                self.buffer = ''
+        assert 0, self.buffer
+
 # main:
 def main () :
     # create the config
@@ -161,6 +231,15 @@ def proc_gen_source (cfg, src, dest) :
     modname = os.path.splitext(os.path.basename(dest))[0]
     trace("generating module '%s' ('%s' -> '%s')" %
           (modname, src, dest))
+    cpp_cmd = ['cpp', src]
+    cpp_proc = subprocess.Popen(cpp_cmd,
+                                stdout=subprocess.PIPE,
+                                universal_newlines=True)
+    parser = Parser()
+    ast = parser.parse(cpp_proc.stdout)
+    r = cpp_proc.wait()
+    assert r == 0, r
+    trace("AST:\n%s" % pprint.pformat(ast))
     open(dest, 'wt').write('/* [TODO] */\n')
 
 # proc_gen_main:
