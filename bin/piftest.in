@@ -148,9 +148,9 @@ def proc_gen_makefile (cfg) :
     for mod in cfg.modules :
         s.write_rule(mod+'.c', mod+'.in')
     # output
-    trace("**  OUTPUT  **")
-    w.dump(sys.stderr)
-    trace("**************")
+    # trace("**  OUTPUT  **")
+    # w.dump(sys.stderr)
+    # trace("**************")
     tmpfile = cfg.makefile + '.tmp'
     with open(tmpfile, 'wt') as f :
         w.dump(f)
