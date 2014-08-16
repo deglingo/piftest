@@ -38,10 +38,11 @@ void pif_suite_register_unit ( PifSuite *suite,
 
 
 
-/* pif_test_register:
+/* pif_suite_register_test:
  */
-void pif_test_register ( const char *path,
-                         PifTestFunc func )
+void pif_suite_register_test ( PifSuite *suite,
+                               const char *path,
+                               PifTestFunc func )
 {
 }
 

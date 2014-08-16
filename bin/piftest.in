@@ -339,7 +339,7 @@ class ASTVisitor :
         self.context.unit_path = path
         test_func = get_test_func(path)
         self.writer.write('modinit.body',
-                          'pif_test_register("%s", %s);\n' %
+                          'pif_suite_register_test(suite, "%s", %s);\n' %
                           (path, test_func))
         self.writer.write('fndecls',
                           'static void %s ( void );\n' % test_func)
