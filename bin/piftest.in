@@ -295,7 +295,8 @@ class ASTVisitor :
         self.writer.section('fndefs')
         self.writer.write('top', '/* AUTO-GENERATED FILE - DO NOT HAND EDIT! */\n')
         self.writer.write('includes',
-                          '#include <piftest.h>\n')
+                          '#include <piftest.h>\n',
+                          '#include <piftools.h>\n')
         # init_func
         init_func = get_module_init_func(self.modname)
         self.writer.write('modinit.head',
@@ -345,7 +346,7 @@ class ASTVisitor :
         self.writer.write('fndefs',
                           'static void %s ( void )\n' % test_func,
                           '{\n')
-        # self.writer.write('fndefs', code)
+        self.writer.write('fndefs', code)
         self.writer.write('fndefs',
                           '}\n')
         
@@ -511,6 +512,7 @@ def proc_gen_module_depends (cfg, dest) :
         os.close(fd)
         with open(tmpfile, 'wt') as f :
             f.write('#include <piftest.h>\n')
+            f.write('#include <piftools.h>\n')
         depends = cpp_depends(tmpfile, cfg.cflags)
     finally:
         os.unlink(tmpfile)
