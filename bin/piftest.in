@@ -526,9 +526,13 @@ def proc_gen_module_depends (cfg, dest) :
     finally:
         os.unlink(tmpfile)
     w = Writer()
+    # [fixme] add progpath and cfgfile ?
     w.write_rule('',
-                 [modname+'.o', dest],
+                 modname+'.o',
                  [modname+'.c'] + depends)
+    w.write_rule('',
+                 dest,
+                 [modname+'.in'] + depends)
     tmpfile = dest + '.tmp'
     with open(tmpfile, 'wt') as f :
         w.dump(f)
@@ -546,9 +550,13 @@ def proc_gen_main_depends (cfg, dest) :
     finally:
         os.unlink(tmpfile)
     w = Writer()
+    # [fixme] add progpath and cfgfile ?
     w.write_rule('',
-                 [cfg.suite+'.o', dest],
+                 cfg.suite+'.o',
                  [cfg.suite+'.c'] + depends)
+    w.write_rule('',
+                 dest,
+                 depends)
     tmpfile = dest + '.tmp'
     with open(tmpfile, 'wt') as f :
         w.dump(f)
