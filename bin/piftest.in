@@ -319,11 +319,12 @@ def proc_gen_makefile (cfg) :
     # makefile dependencies
     s.write_rule(cfg.makefile, [cfg.progpath, cfg.cfgfile])
     # main prog
+    # [fixme] add $(LDFLAGS) ?
     s.write_rule(cfg.suite, [cfg.suite+'.o'] + mod_objs,
                  'libtool --tag=CC --mode=link $(CC) -o $@ $^')
     # objects compilation recipe
     s.write_rule('%.o', None,
-                 'libtool --tag=CC --mode=compile $(CC) -c -o $@ $<')
+                 'libtool --tag=CC --mode=compile $(CC) -c -o $@ $< $(CFLAGS)')
     # main object
     s.write_rule(cfg.suite+'.o', cfg.suite+'.c')
     s.write_rule(cfg.suite+'.c', [cfg.progpath, cfg.cfgfile],

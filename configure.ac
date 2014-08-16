@@ -1,6 +1,9 @@
 AC_INIT([piftest], [0.0.0])
 AM_INIT_AUTOMAKE
 
+# fix default CFLAGS
+: ${CFLAGS:=-g -Wall}
+
 # [fixme] check for python3
 AC_SUBST(PYTHON)
 AC_MSG_CHECKING([for python3])
