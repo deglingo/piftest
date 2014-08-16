@@ -98,6 +98,10 @@ class Parser :
 
     RE_LOCATION = re.compile(r'#\s+(?P<LNO>\d+)\s+"(?P<FNAME>[^"]*)".*$')
 
+    # __init__:
+    def __init__ (self, modname) :
+        self.modname = modname
+        
     # parse:
     def parse (self, fin) :
         self.init(fin)
@@ -115,7 +119,7 @@ class Parser :
     def parse_input (self) :
         tok = self.look()
         if tok.tp == 'END' :
-            return ('unit', (), '', None, None, None, ())
+            return ('unit', (), self.modname, None, None, None, ())
         else :
             assert 0, tok
 
@@ -255,7 +259,7 @@ def proc_gen_source (cfg, src, dest) :
     cpp_proc = subprocess.Popen(cpp_cmd,
                                 stdout=subprocess.PIPE,
                                 universal_newlines=True)
-    parser = Parser()
+    parser = Parser(modname)
     ast = parser.parse(cpp_proc.stdout)
     r = cpp_proc.wait()
     assert r == 0, r
