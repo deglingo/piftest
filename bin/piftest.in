@@ -50,9 +50,9 @@ class Writer :
         parent.add_child(name)
 
     # write:
-    def write (self, section, text) :
+    def write (self, section, *text) :
         s = self.get_section(section)
-        s.write(text)
+        s.write(*text)
         
     # write_rule:
     def write_rule (self, section, targets, prereqs=None, recipe=None) :
@@ -84,8 +84,8 @@ class WSection :
             n.dump(f)
 
     # write:
-    def write (self, text) :
-        self.nodes.append(WText(text))
+    def write (self, *text) :
+        self.nodes.extend(WText(t) for t in text)
 
     # write_rule:
     def write_rule (self, targets, prereqs=None, recipe=None) :
@@ -226,11 +226,25 @@ class ASTVisitor :
 
     # process:
     def process (self, node) :
+        assert node[0] == 'unit'
+        self.modname = node[2]
         self.context = ASTContext(None)
         self.context.unit_path = ''
         self.writer = Writer()
         self.writer.section('top')
+        self.writer.section('modinit')
+        self.writer.section('modinit.head')
+        self.writer.section('modinit.body')
+        self.writer.section('modinit.foot')
         self.writer.write('top', '/* AUTO-GENERATED FILE - DO NOT HAND EDIT! */\n')
+        # init_func
+        init_func = get_module_init_func(self.modname)
+        self.writer.write('modinit.head',
+                          'void %s ( void )\n' % init_func,
+                          '{\n')
+        self.writer.write('modinit.foot',
+                          '}\n')
+        # go
         self.visit(node)
 
     # visit:
@@ -244,13 +258,19 @@ class ASTVisitor :
     def visit_unit (self, node) :
         assert len(node) == 7, node
         tp, loc, name, data, setup, teardown, body = node
+        # get unit path
         path = self.context.unit_path
         if path == '' : path = name
         else : path = path + '.' + name
         self.context.unit_path = path
-        trace("[TODO] visit unit '%s'" % path)
+        self.writer.write('modinit.body',
+                          '/* pif_unit_register("%s"); */\n' % path)
         for child in body :
             self.visit(child)
+
+# get_module_init_func:
+def get_module_init_func (modname) :
+    return '__%s__module_init' % modname
 
 # main:
 def main () :
@@ -342,20 +362,37 @@ def proc_gen_source (cfg, src, dest) :
     visitor = ASTVisitor()
     visitor.process(ast)
     # output
-    trace("** OUTPUT **")
-    visitor.writer.dump(sys.stderr)
-    trace("************")
-    open(dest, 'wt').write('/* [TODO] */\n')
+    tmpfile = dest + '.tmp'
+    with open(tmpfile, 'wt') as f :
+        visitor.writer.dump(f)
+    os.rename(tmpfile, dest)
 
 # proc_gen_main:
 def proc_gen_main (cfg, dest) :
     trace("generating main source: '%s'" % dest)
-    with open(dest, 'wt') as f :
-        f.writelines(('#include <stdio.h>\n',
-                      'int main () {\n',
-                      '  printf("%s: hello!\\n");\n' % cfg.suite,
-                      '  return 0;\n',
-                      '}\n'))
+    w = Writer()
+    w.section('includes')
+    w.section('fndecls')
+    w.section('main')
+    w.section('main.head')
+    w.section('main.init')
+    w.section('main.body')
+    w.section('main.foot')
+    w.write('main.head',
+            'int main ()\n',
+            '{\n')
+    w.write('main.foot',
+            '}\n')
+    for mod in cfg.modules :
+        init_func = get_module_init_func(mod)
+        w.write('fndecls', 'void %s ( void );\n' % init_func)
+        w.write('main.init', '%s();\n' % init_func)
+    w.write('main.body', 'return 0;\n')
+    # output
+    tmpfile = dest + '.tmp'
+    with open(tmpfile, 'wt') as f :
+        w.dump(f)
+    os.rename(tmpfile, dest)
     
 # exec
 if __name__ == '__main__' :
