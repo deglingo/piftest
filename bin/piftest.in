@@ -1,7 +1,7 @@
 #!@PYTHON@
 # -*- python -*-
 
-import sys, os, getopt, configparser, subprocess, re, pprint
+import sys, os, getopt, configparser, subprocess, re, pprint, tempfile, shlex
 
 # trace:
 def trace (msg) :
@@ -282,7 +282,7 @@ def main () :
     # create the config
     cfg = Config()
     # parse the command line
-    shortopts = 'MCB'
+    shortopts = 'MCBDE'
     cmd = ''
     src = ''
     dest = ''
@@ -301,6 +301,16 @@ def main () :
             cmd = 'gen-main'
             assert len(args) == 1, args
             dest, = args
+        elif o in ('-D',) :
+            assert not cmd
+            cmd = 'gen-module-depends'
+            assert len(args) == 1, args
+            dest, = args
+        elif o in ('-E',) :
+            assert not cmd
+            cmd = 'gen-main-depends'
+            assert len(args) == 1, args
+            dest, = args
         else :
             assert 0, (o, a)
     # read the config file
@@ -312,6 +322,10 @@ def main () :
         proc_gen_source(cfg, src, dest)
     elif cmd == 'gen-main' :
         proc_gen_main(cfg, dest)
+    elif cmd == 'gen-module-depends' :
+        proc_gen_module_depends(cfg, dest)
+    elif cmd == 'gen-main-depends' :
+        proc_gen_main_depends(cfg, dest)
     else :
         assert 0, cmd
 
@@ -332,18 +346,22 @@ def proc_gen_makefile (cfg) :
     s.write_rule('%.o', None,
                  'libtool --tag=CC --mode=compile $(CC) -c -o $@ $< $(CFLAGS) %s' %
                  (cfg.cflags,))
-    # main object
-    s.write_rule(cfg.suite+'.o', cfg.suite+'.c')
+    # main source file
     s.write_rule(cfg.suite+'.c', [cfg.progpath, cfg.cfgfile],
                  '%s -B $@' % cfg.progpath)
-    # [fixme] objects depends
-    for mod in cfg.modules :
-        s.write_rule(mod+'.o', mod+'.c')
-    # sources generation rules
+    # modules sources generation rules
     s.write_rule([m+'.c' for m in cfg.modules], None,
                  '%s -C $< $@' % cfg.progpath)
     for mod in cfg.modules :
         s.write_rule(mod+'.c', [mod+'.in', cfg.progpath, cfg.cfgfile])
+    # dependencies
+    s.write('-include %s.d\n' % cfg.suite)
+    for mod in cfg.modules :
+        s.write('-include %s.d\n' % mod)
+    s.write_rule(cfg.suite+'.d', None,
+                 '%s -E $@' % cfg.progpath)
+    s.write_rule([m+'.d' for m in cfg.modules], None,
+                 '%s -D $@' % cfg.progpath)
     # output
     # trace("**  OUTPUT  **")
     # w.dump(sys.stderr)
@@ -401,6 +419,71 @@ def proc_gen_main (cfg, dest) :
     with open(tmpfile, 'wt') as f :
         w.dump(f)
     os.rename(tmpfile, dest)
+
+# proc_gen_module_depends:
+def proc_gen_module_depends (cfg, dest) :
+    modname = os.path.splitext(os.path.basename(dest))[0]
+    trace("generating module depends: '%s' (%s)" %
+          (modname, dest))
+    fd, tmpfile = tempfile.mkstemp()
+    try:
+        os.close(fd)
+        with open(tmpfile, 'wt') as f :
+            f.write('#include <piftest.h>\n')
+        depends = cpp_depends(tmpfile, cfg.cflags)
+    finally:
+        os.unlink(tmpfile)
+    w = Writer()
+    w.write_rule('',
+                 [modname+'.o', dest],
+                 [modname+'.c'] + depends)
+    tmpfile = dest + '.tmp'
+    with open(tmpfile, 'wt') as f :
+        w.dump(f)
+    os.rename(tmpfile, dest)
+
+# proc_gen_main_depends:
+def proc_gen_main_depends (cfg, dest) :
+    trace("generating main depends: '%s'" % dest)
+    fd, tmpfile = tempfile.mkstemp()
+    try:
+        os.close(fd)
+        with open(tmpfile, 'wt') as f :
+            f.write('#include <piftest.h>\n')
+        depends = cpp_depends(tmpfile, cfg.cflags)
+    finally:
+        os.unlink(tmpfile)
+    w = Writer()
+    w.write_rule('',
+                 [cfg.suite+'.o', dest],
+                 [cfg.suite+'.c'] + depends)
+    tmpfile = dest + '.tmp'
+    with open(tmpfile, 'wt') as f :
+        w.dump(f)
+    os.rename(tmpfile, dest)
+
+# cpp_depends:
+def cpp_depends (fname, cflags) :
+    cpp_cmd = ['cpp', '-M', fname]
+    cpp_cmd.extend(shlex.split(cflags))
+    # trace("> %s" % ' '.join(cpp_cmd))
+    cpp_proc = subprocess.Popen(cpp_cmd,
+                                stdout=subprocess.PIPE,
+                                universal_newlines=True)
+    first = True
+    depends = []
+    for line in cpp_proc.stdout :
+        line = line.rstrip('\n')
+        line = line.rstrip('\\')
+        if first :
+            target, line = line.split(':')
+            first = False
+        depends.extend(line.split())
+    r = cpp_proc.wait()
+    assert r == 0, r
+    assert depends and depends[0] == fname, depends
+    depends.pop(0)
+    return depends
     
 # exec
 if __name__ == '__main__' :
