@@ -32,8 +32,27 @@ class Writer :
 
     # get_section:
     def get_section (self, path) :
-        assert path == '', path # [TODO]
-        return self.root
+        s = self.root
+        if path != '' :
+            for comp in path.split('.') :
+                s = s.children[comp]
+        return s
+
+    # section:
+    def section (self, path) :
+        dot = path.rfind('.')
+        if dot < 0 :
+            parent = self.root
+            name = path
+        else :
+            parent = self.get_section(path[:dot])
+            name = path[dot+1:]
+        parent.add_child(name)
+
+    # write:
+    def write (self, section, text) :
+        s = self.get_section(section)
+        s.write(text)
         
     # write_rule:
     def write_rule (self, section, targets, prereqs=None, recipe=None) :
@@ -50,15 +69,38 @@ class WSection :
     # __init__:
     def __init__ (self) :
         self.nodes = []
+        self.children = {}
+
+    # add_child:
+    def add_child (self, name) :
+        assert name not in self.children, name
+        child = WSection()
+        self.nodes.append(child)
+        self.children[name] = child
         
     # dump:
     def dump (self, f) :
         for n in self.nodes :
             n.dump(f)
 
+    # write:
+    def write (self, text) :
+        self.nodes.append(WText(text))
+
     # write_rule:
     def write_rule (self, targets, prereqs=None, recipe=None) :
         self.nodes.append(WRule(targets, prereqs, recipe))
+
+# WText:
+class WText :
+
+    # __init__:
+    def __init__ (self, text) :
+        self.text = text
+
+    # dump:
+    def dump (self, f) :
+        f.write(self.text)
 
 # WRule:
 class WRule :
@@ -162,6 +204,9 @@ class ASTVisitor :
 
     # process:
     def process (self, node) :
+        self.writer = Writer()
+        self.writer.section('top')
+        self.writer.write('top', '/* AUTO-GENERATED FILE - DO NOT HAND EDIT! */\n')
         self.visit(node)
 
     # visit:
@@ -266,6 +311,10 @@ def proc_gen_source (cfg, src, dest) :
     trace("AST:\n%s" % pprint.pformat(ast))
     visitor = ASTVisitor()
     visitor.process(ast)
+    # output
+    trace("** OUTPUT **")
+    visitor.writer.dump(sys.stderr)
+    trace("************")
     open(dest, 'wt').write('/* [TODO] */\n')
 
 # proc_gen_main:
