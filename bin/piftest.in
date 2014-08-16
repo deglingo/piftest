@@ -503,7 +503,7 @@ def proc_gen_main (cfg, dest) :
         w.write('fndecls', 'void %s ( PifSuite *suite );\n' % init_func)
         w.write('main.init', '%s(suite);\n' % init_func)
     w.write('main.body',
-            'pif_test_run(".");\n',
+            'pif_suite_run(suite, ".");\n',
             'return 0;\n')
     # output
     tmpfile = dest + '.tmp'

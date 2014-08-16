@@ -48,8 +48,9 @@ void pif_suite_register_test ( PifSuite *suite,
 
 
 
-/* pif_test_run:
+/* pif_suite_run:
  */
-void pif_test_run ( const char *path )
+void pif_suite_run ( PifSuite *suite,
+                     const char *path )
 {
 }

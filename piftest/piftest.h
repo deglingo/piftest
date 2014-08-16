@@ -15,7 +15,8 @@ void pif_suite_register_unit ( PifSuite *suite,
 void pif_suite_register_test ( PifSuite *suite,
                                const char *path,
                                PifTestFunc func );
-void pif_test_run ( const char *path );
+void pif_suite_run ( PifSuite *suite,
+                     const char *path );
 
 
 
