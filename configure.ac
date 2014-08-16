@@ -14,6 +14,8 @@ fi
 AC_CONFIG_FILES([ \
   Makefile \
   bin/Makefile \
+  test/Makefile \
 ])
 AC_CONFIG_FILES([bin/piftest], [chmod +x bin/piftest])
+AC_CONFIG_FILES([test/piftest.conf])
 AC_OUTPUT

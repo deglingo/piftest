@@ -1,0 +1,6 @@
+
+[DEFAULT]
+
+suite = piftest-test
+
+modules = test_base

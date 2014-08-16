@@ -1,3 +1,3 @@
 #
 
-SUBDIRS = bin
+SUBDIRS = bin test
