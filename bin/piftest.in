@@ -1,4 +1,53 @@
 #!@PYTHON@
 # -*- python -*-
 
-assert 0
+import sys, getopt, configparser
+
+# trace:
+def trace (msg) :
+    sys.stderr.write('piftest: %s\n' % msg)
+
+# Config:
+class Config :
+
+    # __init__:
+    def __init__ (self) :
+        self.cfgfile = 'piftest.conf'
+
+    # read_file:
+    def read_file (self) :
+        parser = configparser.ConfigParser()
+        parser.read_file(open(self.cfgfile, 'rt'))
+        self.suite = parser['DEFAULT']['suite']
+        self.makefile = self.suite + '.mk'
+
+# main:
+def main () :
+    # create the config
+    cfg = Config()
+    # parse the command line
+    shortopts = 'M'
+    cmd = ''
+    opts, args = getopt.gnu_getopt(sys.argv[1:], shortopts)
+    for o, a in opts :
+        if o in ('-M',) :
+            assert not cmd
+            cmd = 'gen-makefile'
+        else :
+            assert 0, (o, a)
+    # read the config file
+    cfg.read_file()
+    # process
+    if cmd == 'gen-makefile' :
+        proc_gen_makefile(cfg)
+    else :
+        assert 0, cmd
+
+# proc_gen_makefile:
+def proc_gen_makefile (cfg) :
+    trace("generating makefile: '%s'" % cfg.makefile)
+
+# exec
+if __name__ == '__main__' :
+    main()
+
