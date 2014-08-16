@@ -19,3 +19,11 @@ void pif_test_register ( const char *path,
                          PifTestFunc func )
 {
 }
+
+
+
+/* pif_test_run:
+ */
+void pif_test_run ( const char *path )
+{
+}

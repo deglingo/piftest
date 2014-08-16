@@ -495,7 +495,9 @@ def proc_gen_main (cfg, dest) :
         init_func = get_module_init_func(mod)
         w.write('fndecls', 'void %s ( void );\n' % init_func)
         w.write('main.init', '%s();\n' % init_func)
-    w.write('main.body', 'return 0;\n')
+    w.write('main.body',
+            'pif_test_run(".");\n',
+            'return 0;\n')
     # output
     tmpfile = dest + '.tmp'
     with open(tmpfile, 'wt') as f :
