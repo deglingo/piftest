@@ -140,6 +140,20 @@ class Token :
 # Parser:
 class Parser :
 
+    TOKEN_SPECS = (
+        ('NL',  r'\n'),
+        ('SPC', r'[ \t]+'),
+        ('IDENT', r'[a-zA-Z_][a-zA-Z0-9_]*'),
+        ('INT', r'[0-9]+'),
+        ('SEMICOLON', r';'),
+        ('OPEN_BRACE', r'\{'),
+        ('CLOSE_BRACE', r'\}'),
+        ('OPEN_PAR', r'\('),
+        ('CLOSE_PAR', r'\)'),
+    )
+
+    RE_LEX = re.compile('|'.join('(?P<%s>%s)' % (n, r) for n, r in TOKEN_SPECS))
+
     RE_LOCATION = re.compile(r'#\s+(?P<LNO>\d+)\s+"(?P<FNAME>[^"]*)".*$')
 
     # __init__:
@@ -161,18 +175,49 @@ class Parser :
         
     # parse_input:
     def parse_input (self) :
-        tok = self.look()
-        if tok.tp == 'END' :
-            return ('unit', (), self.modname, None, None, None, ())
-        else :
-            assert 0, tok
+        body = []
+        while True :
+            tok = self.look()
+            if tok.tp == 'END' :
+                break
+            elif tok.tp == 'IDENT' :
+                if tok.val == 'test' :
+                    body.append(self.parse_test())
+                else :
+                    assert 0, tok
+            else :
+                assert 0, tok
+        return ('unit', (), self.modname, None, None, None, tuple(body))
+
+    # parse_test:
+    def parse_test (self) :
+        self.lex('IDENT', 'test')
+        name = '' # [fixme]
+        self.lex('OPEN_BRACE')
+        code = []
+        depth = 1
+        while True :
+            tok = self.lex(raw=True)
+            if tok.tp == 'OPEN_BRACE' :
+                depth += 1
+            elif tok.tp == 'CLOSE_BRACE' :
+                depth -= 1
+                if depth == 0 :
+                    break
+            code.append(tok.val)
+        return ('test', (), name, ''.join(code))
 
     # lex:
-    def lex (self) :
-        if self.tokbuf :
-            tok = self.tokbuf.pop()
-        else :
-            tok = self.__lex()
+    def lex (self, tp=None, val=None, raw=False) :
+        while True :
+            if self.tokbuf :
+                tok = self.tokbuf.pop()
+            else :
+                tok = self.__lex()
+            if raw or tok.tp not in ('NL', 'SPC') :
+                break
+        assert tp is None or tp == tok.tp, (tp, tok)
+        assert val is None or val == tok.val, (val, tok)
         return tok
 
     # unlex:
@@ -180,8 +225,8 @@ class Parser :
         self.tokbuf.append(tok)
 
     # look:
-    def look (self) :
-        tok = self.lex()
+    def look (self, raw=False) :
+        tok = self.lex(raw=raw)
         self.unlex(tok)
         return tok
 
@@ -199,7 +244,14 @@ class Parser :
                 fname = m.group('FNAME')
                 # trace("[TODO] location: %d, '%s'" % (lno, fname))
                 self.buffer = ''
-        assert 0, self.buffer
+        # get one token
+        m = Parser.RE_LEX.match(self.buffer, self.pos)
+        assert m is not None, self.buffer[self.pos:]
+        assert m.start() == self.pos
+        tp = m.lastgroup
+        val = self.buffer[m.start():m.end()]
+        self.pos = m.end()
+        return Token(tp, val)
 
 # ASTContext:
 class ASTContext :
@@ -272,6 +324,19 @@ class ASTVisitor :
                           'pif_unit_register("%s");\n' % path)
         for child in body :
             self.visit(child)
+
+    # visit_test:
+    def visit_test (self, node) :
+        assert len(node) == 4
+        tp, loc, name, code = node
+        # get unit path
+        path = self.context.unit_path
+        if path == '' : path = name
+        else : path = path + '.' + name
+        self.context.unit_path = path
+        self.writer.write('modinit.body',
+                          '/*pif_test_register("%s");*/\n' % path)
+        
 
 # get_module_init_func:
 def get_module_init_func (modname) :
