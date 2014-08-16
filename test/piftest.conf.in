@@ -3,4 +3,6 @@
 
 suite = piftest-test
 
+cflags = -I@abs_top_srcdir@/piftest
+
 modules = test_base

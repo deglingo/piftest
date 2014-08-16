@@ -22,6 +22,7 @@ class Config :
         self.suite = parser['DEFAULT']['suite']
         self.makefile = self.suite + '.mk'
         self.modules = parser['DEFAULT']['modules'].split()
+        self.cflags = parser['DEFAULT']['cflags']
 
 # Writer:
 class Writer :
@@ -232,11 +233,14 @@ class ASTVisitor :
         self.context.unit_path = ''
         self.writer = Writer()
         self.writer.section('top')
+        self.writer.section('includes')
         self.writer.section('modinit')
         self.writer.section('modinit.head')
         self.writer.section('modinit.body')
         self.writer.section('modinit.foot')
         self.writer.write('top', '/* AUTO-GENERATED FILE - DO NOT HAND EDIT! */\n')
+        self.writer.write('includes',
+                          '#include <piftest.h>\n')
         # init_func
         init_func = get_module_init_func(self.modname)
         self.writer.write('modinit.head',
@@ -324,7 +328,8 @@ def proc_gen_makefile (cfg) :
                  'libtool --tag=CC --mode=link $(CC) -o $@ $^')
     # objects compilation recipe
     s.write_rule('%.o', None,
-                 'libtool --tag=CC --mode=compile $(CC) -c -o $@ $< $(CFLAGS)')
+                 'libtool --tag=CC --mode=compile $(CC) -c -o $@ $< $(CFLAGS) %s' %
+                 (cfg.cflags,))
     # main object
     s.write_rule(cfg.suite+'.o', cfg.suite+'.c')
     s.write_rule(cfg.suite+'.c', [cfg.progpath, cfg.cfgfile],
