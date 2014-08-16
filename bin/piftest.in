@@ -1,7 +1,7 @@
 #!@PYTHON@
 # -*- python -*-
 
-import sys, getopt, configparser
+import sys, os, getopt, configparser
 
 # trace:
 def trace (msg) :
@@ -12,6 +12,7 @@ class Config :
 
     # __init__:
     def __init__ (self) :
+        self.progpath = os.path.realpath(sys.argv[0])
         self.cfgfile = 'piftest.conf'
 
     # read_file:
@@ -20,19 +21,92 @@ class Config :
         parser.read_file(open(self.cfgfile, 'rt'))
         self.suite = parser['DEFAULT']['suite']
         self.makefile = self.suite + '.mk'
+        self.modules = parser['DEFAULT']['modules'].split()
+
+# Writer:
+class Writer :
+
+    # __init__:
+    def __init__ (self) :
+        self.root = WSection()
+
+    # get_section:
+    def get_section (self, path) :
+        assert path == '', path # [TODO]
+        return self.root
+        
+    # write_rule:
+    def write_rule (self, section, targets, prereqs=None, recipe=None) :
+        s = self.get_section(section)
+        s.write_rule(targets, prereqs, recipe)
+
+    # dump:
+    def dump (self, f) :
+        self.root.dump(f)
+
+# WSection:
+class WSection :
+
+    # __init__:
+    def __init__ (self) :
+        self.nodes = []
+        
+    # dump:
+    def dump (self, f) :
+        for n in self.nodes :
+            n.dump(f)
+
+    # write_rule:
+    def write_rule (self, targets, prereqs=None, recipe=None) :
+        self.nodes.append(WRule(targets, prereqs, recipe))
+
+# WRule:
+class WRule :
+
+    # __init__
+    def __init__ (self, targets, prereqs=None, recipe=None) :
+        self.targets = self._fixlist(targets)
+        self.prereqs = self._fixlist(prereqs)
+        self.recipe = self._fixlist(recipe)
+
+    def _fixlist (self, arg) :
+        if arg is None : return ()
+        elif isinstance(arg, str) : return (arg,)
+        else : return tuple(arg)
+
+    # dump:
+    def dump (self, f) :
+        f.write(' '.join(self.targets))
+        f.write(': ')
+        f.write(' '.join(self.prereqs))
+        f.write('\n')
+        for c in self.recipe :
+            f.write('\t%s\n' % c)
 
 # main:
 def main () :
     # create the config
     cfg = Config()
     # parse the command line
-    shortopts = 'M'
+    shortopts = 'MCB'
     cmd = ''
+    src = ''
+    dest = ''
     opts, args = getopt.gnu_getopt(sys.argv[1:], shortopts)
     for o, a in opts :
         if o in ('-M',) :
             assert not cmd
             cmd = 'gen-makefile'
+        elif o in ('-C',) :
+            assert not cmd
+            cmd = 'gen-source'
+            assert len(args) == 2, args
+            src, dest = args
+        elif o in ('-B',) :
+            assert not cmd
+            cmd = 'gen-main'
+            assert len(args) == 1, args
+            dest, = args
         else :
             assert 0, (o, a)
     # read the config file
@@ -40,14 +114,65 @@ def main () :
     # process
     if cmd == 'gen-makefile' :
         proc_gen_makefile(cfg)
+    elif cmd == 'gen-source' :
+        proc_gen_source(cfg, src, dest)
+    elif cmd == 'gen-main' :
+        proc_gen_main(cfg, dest)
     else :
         assert 0, cmd
 
 # proc_gen_makefile:
 def proc_gen_makefile (cfg) :
     trace("generating makefile: '%s'" % cfg.makefile)
+    w = Writer()
+    s = w.get_section('')
+    mod_objs = [m+'.o' for m in cfg.modules]
+    # makefile dependencies
+    s.write_rule(cfg.makefile, [cfg.progpath, cfg.cfgfile])
+    # main prog
+    s.write_rule(cfg.suite, [cfg.suite+'.o'] + mod_objs,
+                 'libtool --tag=CC --mode=link $(CC) -o $@ $^')
+    # objects compilation recipe
+    s.write_rule('%.o', None,
+                 'libtool --tag=CC --mode=compile $(CC) -c -o $@ $<')
+    # main object
+    s.write_rule(cfg.suite+'.o', cfg.suite+'.c')
+    s.write_rule(cfg.suite+'.c', [cfg.progpath, cfg.cfgfile],
+                 '%s -B $@' % cfg.progpath)
+    # [fixme] objects depends
+    for mod in cfg.modules :
+        s.write_rule(mod+'.o', mod+'.c')
+    # sources generation rules
+    s.write_rule([m+'.c' for m in cfg.modules], None,
+                 '%s -C $< $@' % cfg.progpath)
+    for mod in cfg.modules :
+        s.write_rule(mod+'.c', mod+'.in')
+    # output
+    trace("**  OUTPUT  **")
+    w.dump(sys.stderr)
+    trace("**************")
+    tmpfile = cfg.makefile + '.tmp'
+    with open(tmpfile, 'wt') as f :
+        w.dump(f)
+    os.rename(tmpfile, cfg.makefile)
 
+# proc_gen_source:
+def proc_gen_source (cfg, src, dest) :
+    modname = os.path.splitext(os.path.basename(dest))[0]
+    trace("generating module '%s' ('%s' -> '%s')" %
+          (modname, src, dest))
+    open(dest, 'wt').write('/* [TODO] */\n')
+
+# proc_gen_main:
+def proc_gen_main (cfg, dest) :
+    trace("generating main source: '%s'" % dest)
+    with open(dest, 'wt') as f :
+        f.writelines(('#include <stdio.h>\n',
+                      'int main () {\n',
+                      '  printf("%s: hello!\\n");\n' % cfg.suite,
+                      '  return 0;\n',
+                      '}\n'))
+    
 # exec
 if __name__ == '__main__' :
     main()
-
