@@ -324,7 +324,7 @@ class ASTVisitor :
         else : path = path + '.' + name
         self.context.unit_path = path
         self.writer.write('modinit.body',
-                          'pif_unit_register("%s");\n' % path)
+                          'pif_suite_register_unit(suite, "%s");\n' % path)
         for child in body :
             self.visit(child)
 

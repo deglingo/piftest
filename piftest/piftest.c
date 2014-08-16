@@ -29,9 +29,10 @@ PifSuite *pif_suite_new ( const char *name )
 
 
 
-/* pif_unit_register:
+/* pif_suite_register_unit:
  */
-void pif_unit_register ( const char *path )
+void pif_suite_register_unit ( PifSuite *suite,
+                               const char *path )
 {
 }
 
