@@ -199,11 +199,35 @@ class Parser :
                 self.buffer = ''
         assert 0, self.buffer
 
+# ASTContext:
+class ASTContext :
+
+    parent = property(lambda s: s.__parent)
+    
+    def __init__ (self, parent) :
+        self.__parent = parent
+        self.__attrs = {}
+        
+    def __setattr__ (s, n, v) :
+        if n[0] == '_' :
+            object.__setattr__(s, n, v)
+        else :
+            s.__attrs[n] = v
+
+    def __getattr__ (s, n) :
+        if n[0] == '_' :
+            return object.__getattr__(s, n)
+        else :
+            try: return s.__attrs[n]
+            except KeyError: return getattr(s.__parent, n)
+
 # ASTVisitor:
 class ASTVisitor :
 
     # process:
     def process (self, node) :
+        self.context = ASTContext(None)
+        self.context.unit_path = ''
         self.writer = Writer()
         self.writer.section('top')
         self.writer.write('top', '/* AUTO-GENERATED FILE - DO NOT HAND EDIT! */\n')
@@ -211,14 +235,20 @@ class ASTVisitor :
 
     # visit:
     def visit (self, node) :
+        self.context = ASTContext(self.context)
         hdlr = getattr(self, 'visit_' + node[0])
         hdlr(node)
+        self.context = self.context.parent
 
     # visit_unit:
     def visit_unit (self, node) :
         assert len(node) == 7, node
         tp, loc, name, data, setup, teardown, body = node
-        trace("[TODO] visit unit '%s'" % name)
+        path = self.context.unit_path
+        if path == '' : path = name
+        else : path = path + '.' + name
+        self.context.unit_path = path
+        trace("[TODO] visit unit '%s'" % path)
         for child in body :
             self.visit(child)
 
