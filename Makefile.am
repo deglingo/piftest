@@ -1,3 +1,3 @@
 #
 
-SUBDIRS = bin test
+SUBDIRS = bin piftest test

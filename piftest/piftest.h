@@ -6,4 +6,8 @@
 
 
 
+void pif_unit_register ( const char *path );
+
+
+
 #endif

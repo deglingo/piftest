@@ -23,6 +23,7 @@ class Config :
         self.makefile = self.suite + '.mk'
         self.modules = parser['DEFAULT']['modules'].split()
         self.cflags = parser['DEFAULT']['cflags']
+        self.ldflags = parser['DEFAULT']['ldflags']
 
 # Writer:
 class Writer :
@@ -268,7 +269,7 @@ class ASTVisitor :
         else : path = path + '.' + name
         self.context.unit_path = path
         self.writer.write('modinit.body',
-                          '/* pif_unit_register("%s"); */\n' % path)
+                          'pif_unit_register("%s");\n' % path)
         for child in body :
             self.visit(child)
 
@@ -325,7 +326,8 @@ def proc_gen_makefile (cfg) :
     # main prog
     # [fixme] add $(LDFLAGS) ?
     s.write_rule(cfg.suite, [cfg.suite+'.o'] + mod_objs,
-                 'libtool --tag=CC --mode=link $(CC) -o $@ $^')
+                 'libtool --tag=CC --mode=link $(CC) -o $@ $^ %s' %
+                 (cfg.ldflags,))
     # objects compilation recipe
     s.write_rule('%.o', None,
                  'libtool --tag=CC --mode=compile $(CC) -c -o $@ $< $(CFLAGS) %s' %
