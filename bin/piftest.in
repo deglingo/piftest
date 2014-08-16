@@ -335,7 +335,7 @@ class ASTVisitor :
         else : path = path + '.' + name
         self.context.unit_path = path
         self.writer.write('modinit.body',
-                          '/*pif_test_register("%s");*/\n' % path)
+                          'pif_test_register("%s");\n' % path)
         
 
 # get_module_init_func:

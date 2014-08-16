@@ -7,6 +7,7 @@
 
 
 void pif_unit_register ( const char *path );
+void pif_test_register ( const char *path );
 
 
 
