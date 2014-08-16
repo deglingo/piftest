@@ -153,6 +153,26 @@ class Parser :
                 self.buffer = ''
         assert 0, self.buffer
 
+# ASTVisitor:
+class ASTVisitor :
+
+    # process:
+    def process (self, node) :
+        self.visit(node)
+
+    # visit:
+    def visit (self, node) :
+        hdlr = getattr(self, 'visit_' + node[0])
+        hdlr(node)
+
+    # visit_unit:
+    def visit_unit (self, node) :
+        assert len(node) == 7, node
+        tp, loc, name, data, setup, teardown, body = node
+        trace("[TODO] visit unit '%s'" % name)
+        for child in body :
+            self.visit(child)
+
 # main:
 def main () :
     # create the config
@@ -240,6 +260,8 @@ def proc_gen_source (cfg, src, dest) :
     r = cpp_proc.wait()
     assert r == 0, r
     trace("AST:\n%s" % pprint.pformat(ast))
+    visitor = ASTVisitor()
+    visitor.process(ast)
     open(dest, 'wt').write('/* [TODO] */\n')
 
 # proc_gen_main:
