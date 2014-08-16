@@ -146,7 +146,7 @@ def proc_gen_makefile (cfg) :
     s.write_rule([m+'.c' for m in cfg.modules], None,
                  '%s -C $< $@' % cfg.progpath)
     for mod in cfg.modules :
-        s.write_rule(mod+'.c', mod+'.in')
+        s.write_rule(mod+'.c', [mod+'.in', cfg.progpath, cfg.cfgfile])
     # output
     # trace("**  OUTPUT  **")
     # w.dump(sys.stderr)
