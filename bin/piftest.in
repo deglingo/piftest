@@ -1,7 +1,7 @@
 #!@PYTHON@
 # -*- python -*-
 
-import sys, os, getopt, configparser, subprocess, re, pprint, tempfile, shlex
+import sys, os, getopt, configparser, subprocess, re, pprint, tempfile, shlex, glob
 
 # trace:
 def trace (msg) :
@@ -20,8 +20,9 @@ class Config :
         parser = configparser.ConfigParser()
         parser.read_file(open(self.cfgfile, 'rt'))
         self.suite = parser['DEFAULT']['suite']
+        self.srcdir = parser['DEFAULT']['srcdir']
         self.makefile = self.suite + '.mk'
-        self.modules = parser['DEFAULT']['modules'].split()
+        self.modules = shlex.split(parser['DEFAULT']['modules'])
         self.cflags = parser['DEFAULT']['cflags']
         self.ldflags = parser['DEFAULT']['ldflags']
 
@@ -358,6 +359,23 @@ def get_module_init_func (modname) :
 # get_test_func:
 def get_test_func (path) :
     return '__%s__test_func' % path.replace('.', '_')
+
+# newerthan:
+#
+# True if file2 does not exist or is older than file1. file1 can be a
+# single filename or a list, in which case the function returns True
+# if file2 is older than at least one of the files in it.
+#
+def newerthan (file1, file2) :
+    if isinstance(file1, str) :
+        file1 = (file1,)
+    if not os.path.exists(file2) :
+        return True
+    stamp2 = os.path.getmtime(file2)
+    for f in file1 :
+        if os.path.getmtime(f) > stamp2 :
+            return True
+    return False
     
 # main:
 def main () :
@@ -593,13 +611,42 @@ def cpp_depends (fname, cflags) :
 # proc_gen_sources:
 def proc_gen_sources (cfg) :
     trace("generating sources")
-    with open('piftest-test.c', 'wt') as f :
+    # list the modules
+    modules = []
+    for pat in cfg.modules :
+        for fn in glob.glob(os.path.join(cfg.srcdir, pat + '.in')) :
+            mname = os.path.splitext(os.path.basename(fn))[0]
+            cname = mname + '.c'
+            modules.append((mname, fn, cname))
+    trace("found %d modules: %s" %
+          (len(modules), ', '.join(m[0] for m in modules)))
+    # generate the main C file (<suite>.c)
+    main_c = cfg.suite + '.c'
+    if newerthan((cfg.cfgfile, cfg.progpath), main_c) :
+        trace("  + %s" % main_c)
+        _proc_gen_main(cfg, main_c)
+    else :
+        trace("  - %s" % main_c)
+    # generate the modules
+    for mod_name, mod_in, mod_c in modules :
+        if newerthan((cfg.cfgfile, cfg.progpath, mod_in), mod_c) :
+            trace("  + %s (%s)" % (mod_c, mod_in))
+            _proc_gen_source(cfg, mod_name, mod_in, mod_c)
+        else :
+            trace("  - %s (%s)" % (mod_c, mod_in))
+
+# _proc_gen_main:
+def _proc_gen_main (cfg, main_c) :
+    with open(main_c, 'wt') as f :
         f.writelines(('#include <stdio.h>\n',
                       'int main () {\n',
                       '  fprintf(stderr, "piftest-test: hello!\\n");\n',
                       '  return 0;\n',
                       '}\n'))
-    with open('test_base.c', 'wt') as f :
+
+# _proc_gen_source:
+def _proc_gen_source (cfg, mod_name, mod_in, mod_c) :
+    with open(mod_c, 'wt') as f :
         f.write('/* [TODO] */\n')
 
 # exec

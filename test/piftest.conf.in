@@ -1,10 +1,12 @@
 
 [DEFAULT]
 
+srcdir = @srcdir@
+
 suite = piftest-test
 
 cflags = -I@abs_top_srcdir@/piftest
 
 ldflags = -L@abs_top_builddir@/piftest -lpiftest
 
-modules = test_base
+modules = test_*
