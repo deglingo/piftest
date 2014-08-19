@@ -14,8 +14,7 @@ piftest_test_SOURCES = \
 
 BUILT_SOURCES = $(piftest_test_SOURCES)
 
-$(piftest_test_SOURCES) : piftest-test.stamp-h
+-include piftest-test.mk
 
-piftest-test.stamp-h: piftest.conf $(top_builddir)/bin/piftest
-	$(top_builddir)/bin/piftest -G
-	echo >$@
+piftest-test.mk:
+	$(top_builddir)/bin/piftest -M

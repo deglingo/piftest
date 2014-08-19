@@ -54,10 +54,10 @@ class Writer :
         s = self.get_section(section)
         s.write(*text)
         
-    # # write_rule:
-    # def write_rule (self, section, targets, prereqs=None, recipe=None) :
-    #     s = self.get_section(section)
-    #     s.write_rule(targets, prereqs, recipe)
+    # write_rule:
+    def write_rule (self, section, targets, prereqs=None, recipe=None) :
+        s = self.get_section(section)
+        s.write_rule(targets, prereqs, recipe)
 
     # dump:
     def dump (self, f) :
@@ -87,9 +87,9 @@ class WSection :
     def write (self, *text) :
         self.nodes.extend(WText(t) for t in text)
 
-    # # write_rule:
-    # def write_rule (self, targets, prereqs=None, recipe=None) :
-    #     self.nodes.append(WRule(targets, prereqs, recipe))
+    # write_rule:
+    def write_rule (self, targets, prereqs=None, recipe=None) :
+        self.nodes.append(WRule(targets, prereqs, recipe))
 
 # WText:
 class WText :
@@ -102,28 +102,28 @@ class WText :
     def dump (self, f) :
         f.write(self.text)
 
-# # WRule:
-# class WRule :
+# WRule:
+class WRule :
 
-#     # __init__
-#     def __init__ (self, targets, prereqs=None, recipe=None) :
-#         self.targets = self._fixlist(targets)
-#         self.prereqs = self._fixlist(prereqs)
-#         self.recipe = self._fixlist(recipe)
+    # __init__
+    def __init__ (self, targets, prereqs=None, recipe=None) :
+        self.targets = self._fixlist(targets)
+        self.prereqs = self._fixlist(prereqs)
+        self.recipe = self._fixlist(recipe)
 
-#     def _fixlist (self, arg) :
-#         if arg is None : return ()
-#         elif isinstance(arg, str) : return (arg,)
-#         else : return tuple(arg)
+    def _fixlist (self, arg) :
+        if arg is None : return ()
+        elif isinstance(arg, str) : return (arg,)
+        else : return tuple(arg)
 
-#     # dump:
-#     def dump (self, f) :
-#         f.write(' '.join(self.targets))
-#         f.write(': ')
-#         f.write(' '.join(self.prereqs))
-#         f.write('\n')
-#         for c in self.recipe :
-#             f.write('\t%s\n' % c)
+    # dump:
+    def dump (self, f) :
+        f.write(' '.join(self.targets))
+        f.write(': ')
+        f.write(' '.join(self.prereqs))
+        f.write('\n')
+        for c in self.recipe :
+            f.write('\t%s\n' % c)
 
 # Token:
 class Token :
@@ -388,13 +388,16 @@ def main () :
     # create the config
     cfg = Config()
     # parse the command line
-    shortopts = 'G'
+    shortopts = 'GM'
     cmd = ''
     opts, args = getopt.gnu_getopt(sys.argv[1:], shortopts)
     for o, a in opts :
         if o in ('-G',) :
             assert not cmd
             cmd = 'gen-sources'
+        elif o in ('-M',) :
+            assert not cmd
+            cmd = 'gen-makefile'
         else :
             assert 0, (o, a)
     # read the config file
@@ -402,9 +405,45 @@ def main () :
     # process
     if cmd == 'gen-sources' :
         proc_gen_sources(cfg)
+    elif cmd == 'gen-makefile' :
+        proc_gen_makefile(cfg)
     else :
         assert 0, cmd
 
+# proc_gen_makefile:
+def proc_gen_makefile (cfg) :
+    makefile = cfg.suite + '.mk'
+    trace("generating makefile: '%s'" % makefile)
+    # list the modules
+    # [fixme] duplicate
+    modules = []
+    for pat in cfg.modules :
+        for fn in glob.glob(os.path.join(cfg.srcdir, pat + '.in')) :
+            mname = os.path.splitext(os.path.basename(fn))[0]
+            cname = mname + '.c'
+            modules.append((mname, fn, cname))
+    trace("found %d modules: %s" %
+          (len(modules), ', '.join(m[0] for m in modules)))
+    # create the writer
+    w = Writer()
+    s = w.get_section('')
+    s.write('# %s\n' % makefile)
+    # makefile depends
+    s.write_rule(makefile, [cfg.cfgfile, cfg.progpath])
+    # sources
+    s.write_rule([cfg.suite+'.c'] + [m[2] for m in modules],
+                 cfg.suite+'.stamp-h')
+    s.write_rule(cfg.suite+'.stamp-h',
+                 [m[1] for m in modules] + [cfg.cfgfile, cfg.progpath],
+                 ('%s -G' % cfg.progpath,
+                  'echo >$@'))
+    # output
+    w.dump(sys.stderr)
+    tmpfile = makefile + '.tmp'
+    with open(tmpfile, 'wt') as f :
+        w.dump(f)
+    os.rename(tmpfile, makefile)
+        
 # proc_gen_sources:
 def proc_gen_sources (cfg) :
     trace("generating sources")
