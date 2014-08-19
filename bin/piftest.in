@@ -429,7 +429,7 @@ def proc_gen_makefile (cfg) :
     s = w.get_section('')
     s.write('# %s\n' % makefile)
     # makefile depends
-    s.write_rule(makefile, [cfg.cfgfile, cfg.progpath])
+    s.write_rule(makefile, ['Makefile.am', cfg.cfgfile, cfg.progpath])
     # sources
     s.write_rule([cfg.suite+'.c'] + [m[2] for m in modules],
                  cfg.suite+'.stamp-h')
