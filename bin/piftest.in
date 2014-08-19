@@ -364,7 +364,7 @@ def main () :
     # create the config
     cfg = Config()
     # parse the command line
-    shortopts = 'MCBDE'
+    shortopts = 'GMCBDE'
     cmd = ''
     src = ''
     dest = ''
@@ -373,6 +373,9 @@ def main () :
         if o in ('-M',) :
             assert not cmd
             cmd = 'gen-makefile'
+        elif o in ('-G',) :
+            assert not cmd
+            cmd = 'gen-sources'
         elif o in ('-C',) :
             assert not cmd
             cmd = 'gen-source'
@@ -400,6 +403,8 @@ def main () :
     # process
     if cmd == 'gen-makefile' :
         proc_gen_makefile(cfg)
+    elif cmd == 'gen-sources' :
+        proc_gen_sources(cfg)
     elif cmd == 'gen-source' :
         proc_gen_source(cfg, src, dest)
     elif cmd == 'gen-main' :
@@ -584,7 +589,19 @@ def cpp_depends (fname, cflags) :
     assert depends and depends[0] == fname, depends
     depends.pop(0)
     return depends
-    
+
+# proc_gen_sources:
+def proc_gen_sources (cfg) :
+    trace("generating sources")
+    with open('piftest-test.c', 'wt') as f :
+        f.writelines(('#include <stdio.h>\n',
+                      'int main () {\n',
+                      '  fprintf(stderr, "piftest-test: hello!\\n");\n',
+                      '  return 0;\n',
+                      '}\n'))
+    with open('test_base.c', 'wt') as f :
+        f.write('/* [TODO] */\n')
+
 # exec
 if __name__ == '__main__' :
     main()

@@ -2,7 +2,16 @@
 
 TESTS = piftest-test
 
--include piftest-test.mk
+check_PROGRAMS = piftest-test
 
-piftest-test.mk:
-	$(top_builddir)/bin/piftest -M
+piftest_test_SOURCES = \
+	piftest-test.c \
+	test_base.c
+
+BUILT_SOURCES = $(piftest_test_SOURCES)
+
+$(piftest_test_SOURCES) : piftest-test.stamp-h
+
+piftest-test.stamp-h: piftest.conf $(top_builddir)/bin/piftest
+	$(top_builddir)/bin/piftest -G
+	echo >$@
