@@ -17,4 +17,5 @@ BUILT_SOURCES = $(piftest_test_SOURCES)
 -include piftest-test.mk
 
 piftest-test.mk:
-	$(top_builddir)/bin/piftest -M
+	$(top_builddir)/bin/piftest -M \
+		$(piftest_test_SOURCES)

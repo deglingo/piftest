@@ -390,6 +390,7 @@ def main () :
     # parse the command line
     shortopts = 'GM'
     cmd = ''
+    modules = None
     opts, args = getopt.gnu_getopt(sys.argv[1:], shortopts)
     for o, a in opts :
         if o in ('-G',) :
@@ -402,40 +403,43 @@ def main () :
             assert 0, (o, a)
     # read the config file
     cfg.read_file()
+    # get modules list
+    main_c = args[0]
+    modules = list_modules(cfg.srcdir, args[1:])
+    trace("found %d modules: %s" %
+          (len(modules), ', '.join(m[0] for m in modules)))
     # process
     if cmd == 'gen-sources' :
-        proc_gen_sources(cfg)
+        proc_gen_sources(cfg, main_c, modules)
     elif cmd == 'gen-makefile' :
-        proc_gen_makefile(cfg)
+        proc_gen_makefile(cfg, main_c, modules)
     else :
         assert 0, cmd
 
+# list_modules:
+def list_modules (srcdir, cmods) :
+    mods = []
+    for m in cmods :
+        name = os.path.splitext(os.path.basename(m))[0]
+        mods.append((name, os.path.join(srcdir, name+'.in'), m))
+    return tuple(mods)
+
 # proc_gen_makefile:
-def proc_gen_makefile (cfg) :
+def proc_gen_makefile (cfg, main_c, modules) :
     makefile = cfg.suite + '.mk'
     trace("generating makefile: '%s'" % makefile)
-    # list the modules
-    # [fixme] duplicate
-    modules = []
-    for pat in cfg.modules :
-        for fn in glob.glob(os.path.join(cfg.srcdir, pat + '.in')) :
-            mname = os.path.splitext(os.path.basename(fn))[0]
-            cname = mname + '.c'
-            modules.append((mname, fn, cname))
-    trace("found %d modules: %s" %
-          (len(modules), ', '.join(m[0] for m in modules)))
     # create the writer
     w = Writer()
     s = w.get_section('')
     s.write('# %s\n' % makefile)
     # makefile depends
-    s.write_rule(makefile, ['Makefile.am', cfg.cfgfile, cfg.progpath])
+    s.write_rule(makefile, ['Makefile', cfg.cfgfile, cfg.progpath])
     # sources
-    s.write_rule([cfg.suite+'.c'] + [m[2] for m in modules],
+    s.write_rule([main_c] + [m[2] for m in modules],
                  cfg.suite+'.stamp-h')
     s.write_rule(cfg.suite+'.stamp-h',
                  [m[1] for m in modules] + [cfg.cfgfile, cfg.progpath],
-                 ('%s -G' % cfg.progpath,
+                 ('%s -G %s %s' % (cfg.progpath, main_c, ' '.join(m[2] for m in modules)),
                   'echo >$@'))
     # output
     w.dump(sys.stderr)
@@ -445,19 +449,9 @@ def proc_gen_makefile (cfg) :
     os.rename(tmpfile, makefile)
         
 # proc_gen_sources:
-def proc_gen_sources (cfg) :
+def proc_gen_sources (cfg, main_c, modules) :
     trace("generating sources")
-    # list the modules
-    modules = []
-    for pat in cfg.modules :
-        for fn in glob.glob(os.path.join(cfg.srcdir, pat + '.in')) :
-            mname = os.path.splitext(os.path.basename(fn))[0]
-            cname = mname + '.c'
-            modules.append((mname, fn, cname))
-    trace("found %d modules: %s" %
-          (len(modules), ', '.join(m[0] for m in modules)))
     # generate the main C file (<suite>.c)
-    main_c = cfg.suite + '.c'
     if newerthan((cfg.cfgfile, cfg.progpath), main_c) :
         trace("  + %s" % main_c)
         _proc_gen_main(cfg, main_c, modules)
