@@ -82,7 +82,7 @@ void pif_suite_run ( PifSuite *suite,
                      const char *path )
 {
   int n;
-  fprintf(stderr, "%s: running %d tests...", suite->name, suite->n_tests);
+  fprintf(stderr, "%s: running %d test(s)...\n", suite->name, suite->n_tests);
   for (n = 0; n < suite->n_tests; n++)
     {
       suite->tests[n].func();
