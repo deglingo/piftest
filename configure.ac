@@ -8,6 +8,7 @@ AM_INIT_AUTOMAKE
 AC_SUBST([pkgconfigdir], '${libdir}/pkgconfig')
 
 AC_PROG_CC
+AM_PROG_CC_C_O
 LT_INIT
 
 # [fixme] check for python3

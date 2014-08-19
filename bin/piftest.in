@@ -646,8 +646,27 @@ def _proc_gen_main (cfg, main_c) :
 
 # _proc_gen_source:
 def _proc_gen_source (cfg, mod_name, mod_in, mod_c) :
-    with open(mod_c, 'wt') as f :
-        f.write('/* [TODO] */\n')
+    # start cpp
+    cpp_cmd = ['cpp', mod_in]
+    cpp_proc = subprocess.Popen(cpp_cmd,
+                                stdout=subprocess.PIPE,
+                                universal_newlines=True)
+    # parse output
+    parser = Parser(mod_name)
+    ast = parser.parse(cpp_proc.stdout)
+    # terminate cpp
+    r = cpp_proc.wait()
+    assert r == 0, r
+    # ...
+    trace("AST:\n%s" % pprint.pformat(ast))
+    # process the tree
+    visitor = ASTVisitor()
+    visitor.process(ast)
+    # output
+    tmpfile = mod_c + '.tmp'
+    with open(tmpfile, 'wt') as f :
+        visitor.writer.dump(f)
+    os.rename(tmpfile, mod_c)
 
 # exec
 if __name__ == '__main__' :

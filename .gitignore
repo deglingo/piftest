@@ -12,3 +12,4 @@ config.guess
 config.sub
 depcomp
 ltmain.sh
+compile
