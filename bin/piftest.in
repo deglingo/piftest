@@ -21,10 +21,7 @@ class Config :
         parser.read_file(open(self.cfgfile, 'rt'))
         self.suite = parser['DEFAULT']['suite']
         self.srcdir = parser['DEFAULT']['srcdir']
-        self.makefile = self.suite + '.mk'
         self.modules = shlex.split(parser['DEFAULT']['modules'])
-        self.cflags = parser['DEFAULT']['cflags']
-        self.ldflags = parser['DEFAULT']['ldflags']
 
 # Writer:
 class Writer :
@@ -57,10 +54,10 @@ class Writer :
         s = self.get_section(section)
         s.write(*text)
         
-    # write_rule:
-    def write_rule (self, section, targets, prereqs=None, recipe=None) :
-        s = self.get_section(section)
-        s.write_rule(targets, prereqs, recipe)
+    # # write_rule:
+    # def write_rule (self, section, targets, prereqs=None, recipe=None) :
+    #     s = self.get_section(section)
+    #     s.write_rule(targets, prereqs, recipe)
 
     # dump:
     def dump (self, f) :
@@ -90,9 +87,9 @@ class WSection :
     def write (self, *text) :
         self.nodes.extend(WText(t) for t in text)
 
-    # write_rule:
-    def write_rule (self, targets, prereqs=None, recipe=None) :
-        self.nodes.append(WRule(targets, prereqs, recipe))
+    # # write_rule:
+    # def write_rule (self, targets, prereqs=None, recipe=None) :
+    #     self.nodes.append(WRule(targets, prereqs, recipe))
 
 # WText:
 class WText :
@@ -105,28 +102,28 @@ class WText :
     def dump (self, f) :
         f.write(self.text)
 
-# WRule:
-class WRule :
+# # WRule:
+# class WRule :
 
-    # __init__
-    def __init__ (self, targets, prereqs=None, recipe=None) :
-        self.targets = self._fixlist(targets)
-        self.prereqs = self._fixlist(prereqs)
-        self.recipe = self._fixlist(recipe)
+#     # __init__
+#     def __init__ (self, targets, prereqs=None, recipe=None) :
+#         self.targets = self._fixlist(targets)
+#         self.prereqs = self._fixlist(prereqs)
+#         self.recipe = self._fixlist(recipe)
 
-    def _fixlist (self, arg) :
-        if arg is None : return ()
-        elif isinstance(arg, str) : return (arg,)
-        else : return tuple(arg)
+#     def _fixlist (self, arg) :
+#         if arg is None : return ()
+#         elif isinstance(arg, str) : return (arg,)
+#         else : return tuple(arg)
 
-    # dump:
-    def dump (self, f) :
-        f.write(' '.join(self.targets))
-        f.write(': ')
-        f.write(' '.join(self.prereqs))
-        f.write('\n')
-        for c in self.recipe :
-            f.write('\t%s\n' % c)
+#     # dump:
+#     def dump (self, f) :
+#         f.write(' '.join(self.targets))
+#         f.write(': ')
+#         f.write(' '.join(self.prereqs))
+#         f.write('\n')
+#         for c in self.recipe :
+#             f.write('\t%s\n' % c)
 
 # Token:
 class Token :
@@ -382,231 +379,22 @@ def main () :
     # create the config
     cfg = Config()
     # parse the command line
-    shortopts = 'GMCBDE'
+    shortopts = 'G'
     cmd = ''
-    src = ''
-    dest = ''
     opts, args = getopt.gnu_getopt(sys.argv[1:], shortopts)
     for o, a in opts :
-        if o in ('-M',) :
-            assert not cmd
-            cmd = 'gen-makefile'
-        elif o in ('-G',) :
+        if o in ('-G',) :
             assert not cmd
             cmd = 'gen-sources'
-        elif o in ('-C',) :
-            assert not cmd
-            cmd = 'gen-source'
-            assert len(args) == 2, args
-            src, dest = args
-        elif o in ('-B',) :
-            assert not cmd
-            cmd = 'gen-main'
-            assert len(args) == 1, args
-            dest, = args
-        elif o in ('-D',) :
-            assert not cmd
-            cmd = 'gen-module-depends'
-            assert len(args) == 1, args
-            dest, = args
-        elif o in ('-E',) :
-            assert not cmd
-            cmd = 'gen-main-depends'
-            assert len(args) == 1, args
-            dest, = args
         else :
             assert 0, (o, a)
     # read the config file
     cfg.read_file()
     # process
-    if cmd == 'gen-makefile' :
-        proc_gen_makefile(cfg)
-    elif cmd == 'gen-sources' :
+    if cmd == 'gen-sources' :
         proc_gen_sources(cfg)
-    elif cmd == 'gen-source' :
-        proc_gen_source(cfg, src, dest)
-    elif cmd == 'gen-main' :
-        proc_gen_main(cfg, dest)
-    elif cmd == 'gen-module-depends' :
-        proc_gen_module_depends(cfg, dest)
-    elif cmd == 'gen-main-depends' :
-        proc_gen_main_depends(cfg, dest)
     else :
         assert 0, cmd
-
-# proc_gen_makefile:
-def proc_gen_makefile (cfg) :
-    trace("generating makefile: '%s'" % cfg.makefile)
-    w = Writer()
-    s = w.get_section('')
-    mod_objs = [m+'.o' for m in cfg.modules]
-    # makefile dependencies
-    s.write_rule(cfg.makefile, [cfg.progpath, cfg.cfgfile])
-    # main prog
-    # [fixme] add $(LDFLAGS) ?
-    s.write_rule(cfg.suite, [cfg.suite+'.o'] + mod_objs,
-                 'libtool --tag=CC --mode=link $(CC) -o $@ $^ %s' %
-                 (cfg.ldflags,))
-    # objects compilation recipe
-    s.write_rule('%.o', None,
-                 'libtool --tag=CC --mode=compile $(CC) -c -o $@ $< $(CFLAGS) %s' %
-                 (cfg.cflags,))
-    # main source file
-    s.write_rule(cfg.suite+'.c', [cfg.progpath, cfg.cfgfile],
-                 '%s -B $@' % cfg.progpath)
-    # modules sources generation rules
-    s.write_rule([m+'.c' for m in cfg.modules], None,
-                 '%s -C $< $@' % cfg.progpath)
-    for mod in cfg.modules :
-        s.write_rule(mod+'.c', [mod+'.in', cfg.progpath, cfg.cfgfile])
-    # dependencies
-    s.write('-include %s.d\n' % cfg.suite)
-    for mod in cfg.modules :
-        s.write('-include %s.d\n' % mod)
-    s.write_rule(cfg.suite+'.d', None,
-                 '%s -E $@' % cfg.progpath)
-    s.write_rule([m+'.d' for m in cfg.modules], None,
-                 '%s -D $@' % cfg.progpath)
-    # output
-    # trace("**  OUTPUT  **")
-    # w.dump(sys.stderr)
-    # trace("**************")
-    tmpfile = cfg.makefile + '.tmp'
-    with open(tmpfile, 'wt') as f :
-        w.dump(f)
-    os.rename(tmpfile, cfg.makefile)
-
-# proc_gen_source:
-def proc_gen_source (cfg, src, dest) :
-    modname = os.path.splitext(os.path.basename(dest))[0]
-    trace("generating module '%s' ('%s' -> '%s')" %
-          (modname, src, dest))
-    cpp_cmd = ['cpp', src]
-    cpp_proc = subprocess.Popen(cpp_cmd,
-                                stdout=subprocess.PIPE,
-                                universal_newlines=True)
-    parser = Parser(modname)
-    ast = parser.parse(cpp_proc.stdout)
-    r = cpp_proc.wait()
-    assert r == 0, r
-    trace("AST:\n%s" % pprint.pformat(ast))
-    visitor = ASTVisitor()
-    visitor.process(ast)
-    # output
-    tmpfile = dest + '.tmp'
-    with open(tmpfile, 'wt') as f :
-        visitor.writer.dump(f)
-    os.rename(tmpfile, dest)
-
-# proc_gen_main:
-def proc_gen_main (cfg, dest) :
-    trace("generating main source: '%s'" % dest)
-    w = Writer()
-    w.section('includes')
-    w.section('fndecls')
-    w.section('main')
-    w.section('main.head')
-    w.section('main.decls')
-    w.section('main.init')
-    w.section('main.body')
-    w.section('main.foot')
-    w.write('includes',
-            '#include <piftest.h>\n')
-    w.write('main.head',
-            'int main ()\n',
-            '{\n')
-    w.write('main.foot',
-            '}\n')
-    w.write('main.decls',
-            'PifSuite *suite;\n')
-    w.write('main.init',
-            'suite = pif_suite_new("%s");\n' % cfg.suite)
-    for mod in cfg.modules :
-        init_func = get_module_init_func(mod)
-        w.write('fndecls', 'void %s ( PifSuite *suite );\n' % init_func)
-        w.write('main.init', '%s(suite);\n' % init_func)
-    w.write('main.body',
-            'pif_suite_run(suite, ".");\n',
-            'return 0;\n')
-    # output
-    tmpfile = dest + '.tmp'
-    with open(tmpfile, 'wt') as f :
-        w.dump(f)
-    os.rename(tmpfile, dest)
-
-# proc_gen_module_depends:
-def proc_gen_module_depends (cfg, dest) :
-    modname = os.path.splitext(os.path.basename(dest))[0]
-    trace("generating module depends: '%s' (%s)" %
-          (modname, dest))
-    fd, tmpfile = tempfile.mkstemp()
-    try:
-        os.close(fd)
-        with open(tmpfile, 'wt') as f :
-            f.write('#include <piftest.h>\n')
-            f.write('#include <piftools.h>\n')
-        depends = cpp_depends(tmpfile, cfg.cflags)
-    finally:
-        os.unlink(tmpfile)
-    w = Writer()
-    # [fixme] add progpath and cfgfile ?
-    w.write_rule('',
-                 modname+'.o',
-                 [modname+'.c'] + depends)
-    w.write_rule('',
-                 dest,
-                 [modname+'.in'] + depends)
-    tmpfile = dest + '.tmp'
-    with open(tmpfile, 'wt') as f :
-        w.dump(f)
-    os.rename(tmpfile, dest)
-
-# proc_gen_main_depends:
-def proc_gen_main_depends (cfg, dest) :
-    trace("generating main depends: '%s'" % dest)
-    fd, tmpfile = tempfile.mkstemp()
-    try:
-        os.close(fd)
-        with open(tmpfile, 'wt') as f :
-            f.write('#include <piftest.h>\n')
-        depends = cpp_depends(tmpfile, cfg.cflags)
-    finally:
-        os.unlink(tmpfile)
-    w = Writer()
-    # [fixme] add progpath and cfgfile ?
-    w.write_rule('',
-                 cfg.suite+'.o',
-                 [cfg.suite+'.c'] + depends)
-    w.write_rule('',
-                 dest,
-                 depends)
-    tmpfile = dest + '.tmp'
-    with open(tmpfile, 'wt') as f :
-        w.dump(f)
-    os.rename(tmpfile, dest)
-
-# cpp_depends:
-def cpp_depends (fname, cflags) :
-    cpp_cmd = ['cpp', '-M', fname]
-    cpp_cmd.extend(shlex.split(cflags))
-    # trace("> %s" % ' '.join(cpp_cmd))
-    cpp_proc = subprocess.Popen(cpp_cmd,
-                                stdout=subprocess.PIPE,
-                                universal_newlines=True)
-    first = True
-    depends = []
-    for line in cpp_proc.stdout :
-        line = line.rstrip('\n')
-        line = line.rstrip('\\')
-        if first :
-            target, line = line.split(':')
-            first = False
-        depends.extend(line.split())
-    r = cpp_proc.wait()
-    assert r == 0, r
-    assert depends and depends[0] == fname, depends
-    depends.pop(0)
-    return depends
 
 # proc_gen_sources:
 def proc_gen_sources (cfg) :
