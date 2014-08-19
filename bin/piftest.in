@@ -624,7 +624,7 @@ def proc_gen_sources (cfg) :
     main_c = cfg.suite + '.c'
     if newerthan((cfg.cfgfile, cfg.progpath), main_c) :
         trace("  + %s" % main_c)
-        _proc_gen_main(cfg, main_c)
+        _proc_gen_main(cfg, main_c, modules)
     else :
         trace("  - %s" % main_c)
     # generate the modules
@@ -636,13 +636,47 @@ def proc_gen_sources (cfg) :
             trace("  - %s (%s)" % (mod_c, mod_in))
 
 # _proc_gen_main:
-def _proc_gen_main (cfg, main_c) :
-    with open(main_c, 'wt') as f :
-        f.writelines(('#include <stdio.h>\n',
-                      'int main () {\n',
-                      '  fprintf(stderr, "piftest-test: hello!\\n");\n',
-                      '  return 0;\n',
-                      '}\n'))
+def _proc_gen_main (cfg, main_c, modules) :
+    w = Writer()
+    w.section('includes')
+    w.section('fndecls')
+    w.section('main')
+    w.section('main.head')
+    w.section('main.decls')
+    w.section('main.init')
+    w.section('main.modinit')
+    w.section('main.body')
+    w.section('main.foot')
+    # includes
+    w.write('includes',
+            '#include <piftest.h>\n')
+    # main
+    w.write('main.head',
+            'int main ()\n',
+            '{\n')
+    w.write('main.foot',
+            '}\n')
+    # suite init
+    w.write('main.decls',
+            'PifSuite *suite;\n')
+    w.write('main.init',
+            'suite = pif_suite_new("%s");\n' % cfg.suite)
+    # run
+    w.write('main.body',
+            'pif_suite_run(suite, ".");\n',
+            'return 0;') # [todo]
+    # modules
+    for mod_name, mod_in, mod_c in modules :
+        init_func = get_module_init_func(mod_name)
+        w.write('fndecls',
+                'void %s ( PifSuite *suite );\n' % init_func)
+        w.write('main.modinit',
+                '%s(suite);\n' % init_func)
+    # output
+    tmpfile = main_c + '.tmp'
+    with open(tmpfile, 'wt') as f :
+        w.dump(f)
+    os.rename(tmpfile, main_c)
 
 # _proc_gen_source:
 def _proc_gen_source (cfg, mod_name, mod_in, mod_c) :
