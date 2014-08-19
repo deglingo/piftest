@@ -170,6 +170,13 @@ class Parser :
         self.tokbuf = []
         self.pos = 0
         self.buffer = ''
+        self.lineno = 1
+        self.fname = '<input>'
+
+    # error:
+    def error (self, msg) :
+        sys.stderr.write("piftest:%s:%d: %s\n" %
+                         (self.fname, self.lineno, msg))
         
     # parse_input:
     def parse_input (self) :
@@ -182,7 +189,9 @@ class Parser :
                 if tok.val == 'test' :
                     body.append(self.parse_test())
                 else :
-                    assert 0, tok
+                    self.error("unexpected token: '%s' (%s)" %
+                               (tok.val, tok.tp))
+                    assert 0
             else :
                 assert 0, tok
         return ('unit', (), self.modname, None, None, None, tuple(body))
@@ -234,13 +243,13 @@ class Parser :
         while self.pos >= len(self.buffer) :
             self.pos = 0
             self.buffer = self.fin.readline()
+            self.lineno += 1
             if self.buffer == '' :
                 return Token('END')
             m = Parser.RE_LOCATION.match(self.buffer)
             if m is not None :
-                lno = int(m.group('LNO'))
-                fname = m.group('FNAME')
-                # trace("[TODO] location: %d, '%s'" % (lno, fname))
+                self.lineno = int(m.group('LNO')) - 1
+                self.fname = m.group('FNAME')
                 self.buffer = ''
         # get one token
         m = Parser.RE_LEX.match(self.buffer, self.pos)
