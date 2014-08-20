@@ -48,7 +48,9 @@ struct _PifTest
 {
   PIF_NODE_HEADER;
   PifTestFunc func;
+  /* [REMOVEME] (should go in PifUnit) */
   int data_size;
+  PifSetupFunc setup;
 };
 
 
@@ -101,12 +103,14 @@ void pif_suite_register_unit ( PifSuite *suite,
 
 /* pif_suite_register_test:
  *
- * [FIXME] data_size should be registered for unts only
+ * [FIXME] data_size, setup and teardown should be registered for unts
+ * only
  */
 void pif_suite_register_test ( PifSuite *suite,
                                const char *path,
                                PifTestFunc func,
-                               int data_size )
+                               int data_size,
+                               PifSetupFunc setup )
 {
   PifTest *test;
   if (suite->n_tests == MAX_TESTS) {
@@ -117,6 +121,7 @@ void pif_suite_register_test ( PifSuite *suite,
   test->path = strdup(path);
   test->func = func;
   test->data_size = data_size;
+  test->setup = setup;
 }
 
 
@@ -137,6 +142,7 @@ void pif_suite_run ( PifSuite *suite,
       } else {
         data = NULL;
       }
+      suite->tests[n].setup(data);
       suite->tests[n].func(data);
       fprintf(stderr, ".");
       if (data)

@@ -389,6 +389,7 @@ class ASTVisitor :
         self.context = ASTContext(None)
         self.context.unit_path = ''
         self.context.data_stack = ()
+        self.context.setup_stack = ()
         self.writer = Writer()
         self.writer.section('top')
         self.writer.section('includes')
@@ -443,6 +444,19 @@ class ASTVisitor :
         for block in self.context.data_stack :
             self.writer.write('datadefs', block[2])
         self.writer.write('datadefs', '};\n')
+        # register the setup
+        if setup is not None :
+            self.context.setup_stack = self.context.setup_stack + (setup,)
+        # write the setup func
+        setup_name = get_setup_func_name(path)
+        self.writer.write('fndecls', 'static void %s ( %s *data );\n' %
+                          (setup_name, data_name))
+        self.writer.write('fndefs',
+                          'static void %s ( %s *data )\n' % (setup_name, data_name),
+                          '{\n')
+        for block in self.context.setup_stack :
+            self.writer.write('fndefs', block[2])
+        self.writer.write('fndefs', '}\n')
         # unit registration
         self.writer.write('modinit.body',
                           'pif_suite_register_unit(suite, "%s");\n' % path)
@@ -461,10 +475,11 @@ class ASTVisitor :
         else : path = path + '.' + name
         self.context.unit_path = path # ?
         data_name = get_data_name(unit_path)
+        setup_name = get_setup_func_name(unit_path)
         test_func = get_test_func(path)
         self.writer.write('modinit.body',
-                          'pif_suite_register_test(suite, "%s", (PifTestFunc) %s, sizeof(%s));\n' %
-                          (path, test_func, data_name))
+                          'pif_suite_register_test(suite, "%s", (PifTestFunc) %s, sizeof(%s), (PifSetupFunc) %s);\n' %
+                          (path, test_func, data_name, setup_name))
         self.writer.write('fndecls',
                           'static void %s ( %s *data );\n' % (test_func, data_name))
         self.writer.write('fndefs',
@@ -486,6 +501,10 @@ def get_test_func (path) :
 # get_data_name:
 def get_data_name (path) :
     return '__%s__data' % path.replace('.', '_')
+
+# get_setup_func_name:
+def get_setup_func_name (path) :
+    return '__%s__setup' % path.replace('.', '_')
 
 # newerthan:
 #

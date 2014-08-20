@@ -5,4 +5,4 @@ data { int value; }
 setup { data->value = 42; }
 teardown { data->value = 0; }
 
-test { PIF_CHECK(data->value != 42); }
+test { PIF_CHECK(data->value == 42); }
