@@ -1,0 +1,12 @@
+/* -*- c -*- */
+
+data { PifSuite *suite; }
+
+setup { data->suite = pif_suite_new("suite-name"); }
+
+teardown { /* pif_suite_destroy(data->suite); */ }
+
+test { 
+  PIF_CHECK(data->suite); 
+  /* CHECK(!strcmp(data->suite->name, "suite-name")); */
+}
