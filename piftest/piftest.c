@@ -90,9 +90,17 @@ void pif_suite_run ( PifSuite *suite,
   fprintf(stderr, "%s: running %d test(s)...\n", suite->name, suite->n_tests);
   for (n = 0; n < suite->n_tests; n++)
     {
-      void *data = NULL; /* [todo] */
+      void *data;
+      if (suite->tests[n].data_size) {
+        data = malloc(suite->tests[n].data_size);
+        memset(data, 0, suite->tests[n].data_size);
+      } else {
+        data = NULL;
+      }
       suite->tests[n].func(data);
       fprintf(stderr, ".");
+      if (data)
+        free(data);
     }
   fprintf(stderr, "\n");
 }
