@@ -153,6 +153,7 @@ class Parser :
         ('ARROW', r'->'),
         ('EQUALEQUAL', r'=='),
         ('NOTEQUAL', r'!='),
+        ('EQUAL', r'='),
         ('SEMICOLON', r';'),
         ('OPEN_BRACE', r'\{'),
         ('CLOSE_BRACE', r'\}'),
@@ -192,6 +193,8 @@ class Parser :
     def parse_input (self) :
         body = []
         data = None
+        setup = None
+        teardown = None
         names = set()
         index = 0
         anonymous = []
@@ -205,6 +208,16 @@ class Parser :
                         self.error("duplicated data block")
                         assert 0
                     data = self.parse_data()
+                elif tok.val == 'setup' :
+                    if setup is not None :
+                        self.error("duplicated setup block")
+                        assert 0
+                    setup = self.parse_setup()
+                elif tok.val == 'teardown' :
+                    if teardown is not None :
+                        self.error("duplicated teardown block")
+                        assert 0
+                    teardown = self.parse_teardown()
                 elif tok.val == 'test' :
                     test = self.parse_test()
                     body.append(test)
@@ -227,7 +240,7 @@ class Parser :
                     body[index] = body[index][:2] + (name,) + body[index][3:]
                     break
         #
-        return ('unit', (), self.modname, data, None, None, tuple(body))
+        return ('unit', (), self.modname, data, setup, teardown, tuple(body))
 
     # parse_data:
     def parse_data (self) :
@@ -244,7 +257,41 @@ class Parser :
                 if depth == 0 :
                     break
             code.append(tok.val)
-        return ('data', (), ''.join(code))        
+        return ('data', (), ''.join(code))
+
+    # parse_setup:
+    def parse_setup (self) :
+        self.lex('IDENT', 'setup')
+        self.lex('OPEN_BRACE')
+        code = []
+        depth = 1
+        while True :
+            tok = self.lex(raw=True)
+            if tok.tp == 'OPEN_BRACE' :
+                depth += 1
+            elif tok.tp == 'CLOSE_BRACE' :
+                depth -= 1
+                if depth == 0 :
+                    break
+            code.append(tok.val)
+        return ('setup', (), ''.join(code))
+
+    # parse_teardown:
+    def parse_teardown (self) :
+        self.lex('IDENT', 'teardown')
+        self.lex('OPEN_BRACE')
+        code = []
+        depth = 1
+        while True :
+            tok = self.lex(raw=True)
+            if tok.tp == 'OPEN_BRACE' :
+                depth += 1
+            elif tok.tp == 'CLOSE_BRACE' :
+                depth -= 1
+                if depth == 0 :
+                    break
+            code.append(tok.val)
+        return ('teardown', (), ''.join(code))
 
     # parse_test:
     def parse_test (self) :
