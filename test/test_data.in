@@ -2,4 +2,4 @@
 
 data { int data1; }
 
-test { PIF_CHECK(dat->data1 == 0); }
+test { PIF_CHECK(data == 0); }

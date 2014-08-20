@@ -7,14 +7,15 @@
 
 
 typedef struct _PifSuite PifSuite;
-typedef void (* PifTestFunc) ( void );
+typedef void (* PifTestFunc) ( void *data );
 
 PifSuite *pif_suite_new ( const char *name );
 void pif_suite_register_unit ( PifSuite *suite,
                                const char *path );
 void pif_suite_register_test ( PifSuite *suite,
                                const char *path,
-                               PifTestFunc func );
+                               PifTestFunc func,
+                               int data_size );
 void pif_suite_run ( PifSuite *suite,
                      const char *path );
 

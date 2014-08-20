@@ -21,6 +21,7 @@ struct _PifTest
 {
   char *path;
   PifTestFunc func;
+  int data_size;
 };
 
 
@@ -59,10 +60,13 @@ void pif_suite_register_unit ( PifSuite *suite,
 
 
 /* pif_suite_register_test:
+ *
+ * [FIXME] data_size should be registered for unts only
  */
 void pif_suite_register_test ( PifSuite *suite,
                                const char *path,
-                               PifTestFunc func )
+                               PifTestFunc func,
+                               int data_size )
 {
   PifTest *test;
   if (suite->n_tests == MAX_TESTS) {
@@ -72,6 +76,7 @@ void pif_suite_register_test ( PifSuite *suite,
   test = &suite->tests[suite->n_tests++];
   test->path = strdup(path);
   test->func = func;
+  test->data_size = data_size;
 }
 
 
@@ -85,7 +90,8 @@ void pif_suite_run ( PifSuite *suite,
   fprintf(stderr, "%s: running %d test(s)...\n", suite->name, suite->n_tests);
   for (n = 0; n < suite->n_tests; n++)
     {
-      suite->tests[n].func();
+      void *data = NULL; /* [todo] */
+      suite->tests[n].func(data);
       fprintf(stderr, ".");
     }
   fprintf(stderr, "\n");

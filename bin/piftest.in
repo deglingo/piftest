@@ -152,6 +152,7 @@ class Parser :
         ('INT', r'[0-9]+'),
         ('ARROW', r'->'),
         ('EQUALEQUAL', r'=='),
+        ('NOTEQUAL', r'!='),
         ('SEMICOLON', r';'),
         ('OPEN_BRACE', r'\{'),
         ('CLOSE_BRACE', r'\}'),
@@ -390,18 +391,20 @@ class ASTVisitor :
         assert len(node) == 4
         tp, loc, name, code = node
         # get unit path
-        path = self.context.unit_path
+        unit_path = self.context.unit_path
+        path = unit_path
         if path == '' : path = name
         else : path = path + '.' + name
-        self.context.unit_path = path
+        self.context.unit_path = path # ?
+        data_name = get_data_name(unit_path)
         test_func = get_test_func(path)
         self.writer.write('modinit.body',
-                          'pif_suite_register_test(suite, "%s", %s);\n' %
-                          (path, test_func))
+                          'pif_suite_register_test(suite, "%s", (PifTestFunc) %s, sizeof(%s));\n' %
+                          (path, test_func, data_name))
         self.writer.write('fndecls',
-                          'static void %s ( void );\n' % test_func)
+                          'static void %s ( %s *data );\n' % (test_func, data_name))
         self.writer.write('fndefs',
-                          'static void %s ( void )\n' % test_func,
+                          'static void %s ( %s *data )\n' % (test_func, data_name),
                           '{\n')
         self.writer.write('fndefs', code)
         self.writer.write('fndefs',
