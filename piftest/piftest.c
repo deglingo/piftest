@@ -51,6 +51,7 @@ struct _PifTest
   /* [REMOVEME] (should go in PifUnit) */
   int data_size;
   PifSetupFunc setup;
+  PifTeardownFunc teardown;
 };
 
 
@@ -110,7 +111,8 @@ void pif_suite_register_test ( PifSuite *suite,
                                const char *path,
                                PifTestFunc func,
                                int data_size,
-                               PifSetupFunc setup )
+                               PifSetupFunc setup,
+                               PifTeardownFunc teardown )
 {
   PifTest *test;
   if (suite->n_tests == MAX_TESTS) {
@@ -122,6 +124,7 @@ void pif_suite_register_test ( PifSuite *suite,
   test->func = func;
   test->data_size = data_size;
   test->setup = setup;
+  test->teardown = teardown;
 }
 
 
@@ -144,6 +147,7 @@ void pif_suite_run ( PifSuite *suite,
       }
       suite->tests[n].setup(data);
       suite->tests[n].func(data);
+      suite->tests[n].teardown(data);
       fprintf(stderr, ".");
       if (data)
         free(data);

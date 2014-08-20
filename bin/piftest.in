@@ -390,6 +390,7 @@ class ASTVisitor :
         self.context.unit_path = ''
         self.context.data_stack = ()
         self.context.setup_stack = ()
+        self.context.teardown_stack = ()
         self.writer = Writer()
         self.writer.section('top')
         self.writer.section('includes')
@@ -447,6 +448,9 @@ class ASTVisitor :
         # register the setup
         if setup is not None :
             self.context.setup_stack = self.context.setup_stack + (setup,)
+        # register the teardown
+        if teardown is not None :
+            self.context.teardown_stack = self.context.teardown_stack + (teardown,)
         # write the setup func
         setup_name = get_setup_func_name(path)
         self.writer.write('fndecls', 'static void %s ( %s *data );\n' %
@@ -455,6 +459,16 @@ class ASTVisitor :
                           'static void %s ( %s *data )\n' % (setup_name, data_name),
                           '{\n')
         for block in self.context.setup_stack :
+            self.writer.write('fndefs', block[2])
+        self.writer.write('fndefs', '}\n')
+        # write the teardown func
+        teardown_name = get_teardown_func_name(path)
+        self.writer.write('fndecls', 'static void %s ( %s *data );\n' %
+                          (teardown_name, data_name))
+        self.writer.write('fndefs',
+                          'static void %s ( %s *data )\n' % (teardown_name, data_name),
+                          '{\n')
+        for block in reversed(self.context.teardown_stack) :
             self.writer.write('fndefs', block[2])
         self.writer.write('fndefs', '}\n')
         # unit registration
@@ -476,10 +490,11 @@ class ASTVisitor :
         self.context.unit_path = path # ?
         data_name = get_data_name(unit_path)
         setup_name = get_setup_func_name(unit_path)
+        teardown_name = get_teardown_func_name(unit_path)
         test_func = get_test_func(path)
         self.writer.write('modinit.body',
-                          'pif_suite_register_test(suite, "%s", (PifTestFunc) %s, sizeof(%s), (PifSetupFunc) %s);\n' %
-                          (path, test_func, data_name, setup_name))
+                          'pif_suite_register_test(suite, "%s", (PifTestFunc) %s, sizeof(%s), (PifSetupFunc) %s, (PifTeardownFunc) %s);\n' %
+                          (path, test_func, data_name, setup_name, teardown_name))
         self.writer.write('fndecls',
                           'static void %s ( %s *data );\n' % (test_func, data_name))
         self.writer.write('fndefs',
@@ -505,6 +520,10 @@ def get_data_name (path) :
 # get_setup_func_name:
 def get_setup_func_name (path) :
     return '__%s__setup' % path.replace('.', '_')
+
+# get_teardown_func_name:
+def get_teardown_func_name (path) :
+    return '__%s__teardown' % path.replace('.', '_')
 
 # newerthan:
 #
