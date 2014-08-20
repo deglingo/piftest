@@ -150,6 +150,8 @@ class Parser :
         ('SPC', r'[ \t]+'),
         ('IDENT', r'[a-zA-Z_][a-zA-Z0-9_]*'),
         ('INT', r'[0-9]+'),
+        ('ARROW', r'->'),
+        ('EQUALEQUAL', r'=='),
         ('SEMICOLON', r';'),
         ('OPEN_BRACE', r'\{'),
         ('CLOSE_BRACE', r'\}'),
@@ -188,12 +190,18 @@ class Parser :
     # parse_input:
     def parse_input (self) :
         body = []
+        data = None
         while True :
             tok = self.look()
             if tok.tp == 'END' :
                 break
             elif tok.tp == 'IDENT' :
-                if tok.val == 'test' :
+                if tok.val == 'data' :
+                    if data is not None :
+                        self.error("duplicated data block")
+                        assert 0
+                    data = self.parse_data()
+                elif tok.val == 'test' :
                     body.append(self.parse_test())
                 else :
                     self.error("unexpected token: '%s' (%s)" %
@@ -201,7 +209,24 @@ class Parser :
                     assert 0
             else :
                 assert 0, tok
-        return ('unit', (), self.modname, None, None, None, tuple(body))
+        return ('unit', (), self.modname, data, None, None, tuple(body))
+
+    # parse_data:
+    def parse_data (self) :
+        self.lex('IDENT', 'data')
+        self.lex('OPEN_BRACE')
+        code = []
+        depth = 1
+        while True :
+            tok = self.lex(raw=True)
+            if tok.tp == 'OPEN_BRACE' :
+                depth += 1
+            elif tok.tp == 'CLOSE_BRACE' :
+                depth -= 1
+                if depth == 0 :
+                    break
+            code.append(tok.val)
+        return ('data', (), ''.join(code))        
 
     # parse_test:
     def parse_test (self) :
