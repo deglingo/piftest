@@ -192,6 +192,9 @@ class Parser :
     def parse_input (self) :
         body = []
         data = None
+        names = set()
+        index = 0
+        anonymous = []
         while True :
             tok = self.look()
             if tok.tp == 'END' :
@@ -203,13 +206,27 @@ class Parser :
                         assert 0
                     data = self.parse_data()
                 elif tok.val == 'test' :
-                    body.append(self.parse_test())
+                    test = self.parse_test()
+                    body.append(test)
+                    assert test[2] == '', test # [todo]
+                    anonymous.append(index)
+                    index += 1
                 else :
                     self.error("unexpected token: '%s' (%s)" %
                                (tok.val, tok.tp))
                     assert 0
             else :
                 assert 0, tok
+        # fix names
+        n = 1
+        for index in anonymous :
+            while True :
+                name = '%s%d' % (body[index][0], n)
+                n += 1
+                if name not in names :
+                    body[index] = body[index][:2] + (name,) + body[index][3:]
+                    break
+        #
         return ('unit', (), self.modname, data, None, None, tuple(body))
 
     # parse_data:

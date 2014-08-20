@@ -1,3 +1,4 @@
 /* -*- c -*- */
 
 test { PIF_CHECK(1); }
+test { PIF_CHECK(2); }
