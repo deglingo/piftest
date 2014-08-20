@@ -3,9 +3,12 @@
 
 import sys, os, getopt, configparser, subprocess, re, pprint, tempfile, shlex, glob, errno
 
+DEBUG = False
+
 # trace:
 def trace (msg) :
-    sys.stderr.write('piftest: %s\n' % msg)
+    if DEBUG :
+        sys.stderr.write('piftest: %s\n' % msg)
 
 # Config:
 class Config :
