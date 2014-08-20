@@ -619,9 +619,9 @@ def proc_gen_makefile (cfg, subdir) :
             'depcomp = $(top_srcdir)/depcomp\n', # [fixme] subst
             subst('CCDEPMODE'))
     # [fixme]
-    s.write_rule('all', None, 'echo "** ALL **" >&2')
+    s.write_rule('all')
     s.write_rule('check', cfg.suite, './%s' % cfg.suite)
-    s.write_rule('install', None, 'echo "** INSTALL **" >&2')
+    s.write_rule('install')
     # makefile regeneration
     s.write_rule('Makefile', ('$(srcdir)/Makefile.in', '$(top_builddir)/config.status'),
                  'cd $(top_builddir) && ./config.status --file=$(subdir)/Makefile')
