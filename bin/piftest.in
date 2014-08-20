@@ -323,9 +323,12 @@ class ASTVisitor :
         self.modname = node[2]
         self.context = ASTContext(None)
         self.context.unit_path = ''
+        self.context.data_stack = ()
         self.writer = Writer()
         self.writer.section('top')
         self.writer.section('includes')
+        self.writer.section('typedefs')
+        self.writer.section('datadefs')
         self.writer.section('fndecls')
         self.writer.section('modinit')
         self.writer.section('modinit.head')
@@ -362,8 +365,23 @@ class ASTVisitor :
         if path == '' : path = name
         else : path = path + '.' + name
         self.context.unit_path = path
+        # register the data block
+        if data is not None :
+            self.context.data_stack = self.context.data_stack + (data,)
+        # create the data struct
+        data_name = get_data_name(path)
+        self.writer.write('typedefs',
+                          'typedef struct _%s %s;\n' % (data_name, data_name))
+        self.writer.write('datadefs',
+                          'struct _%s\n' % data_name,
+                          '{\n')
+        for block in self.context.data_stack :
+            self.writer.write('datadefs', block[2])
+        self.writer.write('datadefs', '};\n')
+        # unit registration
         self.writer.write('modinit.body',
                           'pif_suite_register_unit(suite, "%s");\n' % path)
+        # process children
         for child in body :
             self.visit(child)
 
@@ -397,6 +415,10 @@ def get_module_init_func (modname) :
 # get_test_func:
 def get_test_func (path) :
     return '__%s__test_func' % path.replace('.', '_')
+
+# get_data_name:
+def get_data_name (path) :
+    return '__%s__data' % path.replace('.', '_')
 
 # newerthan:
 #
