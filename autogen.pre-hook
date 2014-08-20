@@ -1,0 +1,4 @@
+# -*- shell-script -*-
+
+echo "pre-hook: installing test/Makefile.in"
+cp -vf test/Makefile-dummy.in test/Makefile.in

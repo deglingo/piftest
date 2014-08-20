@@ -29,5 +29,4 @@ AC_CONFIG_FILES([ \
 ])
 AC_CONFIG_FILES([piftest.pc])
 AC_CONFIG_FILES([bin/piftest], [chmod +x bin/piftest])
-AC_CONFIG_FILES([test/piftest.conf])
 AC_OUTPUT

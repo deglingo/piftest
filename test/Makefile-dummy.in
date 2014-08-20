@@ -1,0 +1,17 @@
+# -*- makefile -*-
+#
+# Some dummy makefile installed at bootstrap time because we can't
+# generate the 'real' one before piftest is built.
+#
+
+abs_top_builddir = @abs_top_builddir@
+top_builddir = @top_builddir@
+top_srcdir = @top_srcdir@
+srcdir = @srcdir@
+subdir = test
+
+Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
+	cd $(top_builddir) && ./config.status --file=$(subdir)/Makefile
+
+$(srcdir)/Makefile.in: $(top_builddir)/bin/piftest
+	cd $(top_srcdir) && $(abs_top_builddir)/bin/piftest -b $(abs_top_builddir)/$(subdir) -M $(subdir)

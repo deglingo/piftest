@@ -1,7 +1,7 @@
 #!@PYTHON@
 # -*- python -*-
 
-import sys, os, getopt, configparser, subprocess, re, pprint, tempfile, shlex, glob
+import sys, os, getopt, configparser, subprocess, re, pprint, tempfile, shlex, glob, errno
 
 # trace:
 def trace (msg) :
@@ -13,15 +13,22 @@ class Config :
     # __init__:
     def __init__ (self) :
         self.progpath = os.path.realpath(sys.argv[0])
-        self.cfgfile = 'piftest.conf'
+        self.builddir = ''
 
     # read_file:
-    def read_file (self) :
-        parser = configparser.ConfigParser()
+    def read_file (self, cfgfile) :
+        defaults = {
+            'cflags': '',
+            'ldflags': '',
+        }
+        self.cfgfile = os.path.realpath(cfgfile)
+        parser = configparser.ConfigParser(defaults=defaults)
         parser.read_file(open(self.cfgfile, 'rt'))
         self.suite = parser['DEFAULT']['suite']
-        self.srcdir = parser['DEFAULT']['srcdir']
-        self.modules = shlex.split(parser['DEFAULT']['modules'])
+        # self.srcdir = parser['DEFAULT']['srcdir']
+        self.modules = parser['DEFAULT']['modules'].split()
+        self.cflags = parser['DEFAULT']['cflags']
+        self.ldflags = parser['DEFAULT']['ldflags']
 
 # Writer:
 class Writer :
@@ -388,7 +395,7 @@ def main () :
     # create the config
     cfg = Config()
     # parse the command line
-    shortopts = 'GM'
+    shortopts = 'GMs:b:'
     cmd = ''
     modules = None
     opts, args = getopt.gnu_getopt(sys.argv[1:], shortopts)
@@ -396,77 +403,119 @@ def main () :
         if o in ('-G',) :
             assert not cmd
             cmd = 'gen-sources'
+            assert len(args) == 1, args
+            cfgfile, = args
         elif o in ('-M',) :
             assert not cmd
             cmd = 'gen-makefile'
+            assert len(args) == 1, args
+            subdir, = args
+            cfgfile = os.path.join(subdir, 'piftest.conf')
+        elif o in ('-b',) :
+            cfg.builddir = os.path.realpath(a)
+        elif o in ('-s',) :
+            cfg.srcdir = a
         else :
             assert 0, (o, a)
     # read the config file
-    cfg.read_file()
-    # get modules list
-    main_c = args[0]
-    modules = list_modules(cfg.srcdir, args[1:])
-    trace("found %d modules: %s" %
-          (len(modules), ', '.join(m[0] for m in modules)))
+    cfg.read_file(cfgfile)
     # process
     if cmd == 'gen-sources' :
-        proc_gen_sources(cfg, main_c, modules)
+        proc_gen_sources(cfg)
     elif cmd == 'gen-makefile' :
-        proc_gen_makefile(cfg, main_c, modules)
+        proc_gen_makefile(cfg, subdir)
     else :
         assert 0, cmd
-
-# list_modules:
-def list_modules (srcdir, cmods) :
-    mods = []
-    for m in cmods :
-        name = os.path.splitext(os.path.basename(m))[0]
-        mods.append((name, os.path.join(srcdir, name+'.in'), m))
-    return tuple(mods)
-
+    
 # proc_gen_makefile:
-def proc_gen_makefile (cfg, main_c, modules) :
-    makefile = cfg.suite + '.mk'
-    trace("generating makefile: '%s'" % makefile)
+def proc_gen_makefile (cfg, subdir) :
+    makefile = os.path.realpath(os.path.join(subdir, 'Makefile.in'))
+    trace("generating makefile '%s'" % makefile)
+    # [fixme] create the Po files
+    if cfg.builddir :
+        depsdir = os.path.join(cfg.builddir, '.deps')
+        try: os.mkdir(depsdir)
+        except OSError as exc:
+            if exc.errno != errno.EEXIST : raise
+        for base in [cfg.suite] + cfg.modules :
+            pofile = os.path.join(depsdir, base+'.Po')
+            if not os.path.exists(pofile) :
+                with open(pofile, 'wt') as f :
+                    f.write('%s.o: %s.c\n' % (base, base))
     # create the writer
     w = Writer()
     s = w.get_section('')
     s.write('# %s\n' % makefile)
-    # makefile depends
-    s.write_rule(makefile, ['Makefile', cfg.cfgfile, cfg.progpath])
-    # sources
-    s.write_rule([main_c] + [m[2] for m in modules],
+    # define some vars
+    def subst (n) :
+        return '%s = @%s@\n' % (n, n)
+    s.write(subst('abs_top_builddir'),
+            subst('top_builddir'),
+            subst('top_srcdir'),
+            subst('srcdir'),
+            'subdir = %s\n' % subdir,
+            'LIBTOOL = libtool\n', # [fixme] subst('LIBTOOL'),
+            subst('CC'),
+            'CCLD = $(CC)\n',
+            'depcomp = $(top_srcdir)/depcomp\n', # [fixme] subst
+            subst('CCDEPMODE'))
+    # [fixme]
+    s.write_rule('all', None, 'echo "** ALL **" >&2')
+    s.write_rule('check', cfg.suite, './%s' % cfg.suite)
+    s.write_rule('install', None, 'echo "** INSTALL **" >&2')
+    # makefile regeneration
+    s.write_rule('Makefile', ('$(srcdir)/Makefile.in', '$(top_builddir)/config.status'),
+                 'cd $(top_builddir) && ./config.status --file=$(subdir)/Makefile')
+    s.write_rule('$(srcdir)/Makefile.in', [cfg.cfgfile, cfg.progpath],
+                 'cd $(top_srcdir) && %s -b %s -M $(subdir)' % (cfg.progpath, cfg.builddir))
+    # test suite program
+    s.write_rule(cfg.suite, [cfg.suite+'.o'] + [m+'.o' for m in cfg.modules],
+                 '$(LIBTOOL) --tag=CC --mode=link $(CCLD) -o $@ $^ $(LDFLAGS) %s' % cfg.ldflags)
+    # object compilation
+    s.write_rule('.c.o', None,
+                 ('test -d .deps || mkdir .deps', # [fixme]
+                  'source=$< object=$@ $(CCDEPMODE) DEPDIR=.deps lbtool=yes $(depcomp) $(LIBTOOL) --tag=CC --mode=compile $(CC) -c -o $@ $< $(CFLAGS) %s' % cfg.cflags))
+    # include deps
+    s.write('include .deps/%s.Po\n' % cfg.suite)
+    for m in cfg.modules :
+        s.write('include .deps/%s.Po\n' % m)
+    # sources generation
+    s.write_rule([cfg.suite+'.c'] + [m+'.c' for m in cfg.modules],
                  cfg.suite+'.stamp-h')
-    s.write_rule(cfg.suite+'.stamp-h',
-                 [m[1] for m in modules] + [cfg.cfgfile, cfg.progpath],
-                 ('%s -G %s %s' % (cfg.progpath, main_c, ' '.join(m[2] for m in modules)),
+    s.write_rule(cfg.suite+'.stamp-h', ['$(srcdir)/'+m+'.in' for m in cfg.modules] + [cfg.cfgfile, cfg.progpath],
+                 ('%s -s $(srcdir) -G %s' % (cfg.progpath, cfg.cfgfile),
                   'echo >$@'))
     # output
-    w.dump(sys.stderr)
+    # trace("** OUTPUT **")
+    # w.dump(sys.stderr)
+    # trace("************")
     tmpfile = makefile + '.tmp'
     with open(tmpfile, 'wt') as f :
         w.dump(f)
     os.rename(tmpfile, makefile)
-        
+    
 # proc_gen_sources:
-def proc_gen_sources (cfg, main_c, modules) :
+def proc_gen_sources (cfg) :
     trace("generating sources")
     # generate the main C file (<suite>.c)
+    main_c = cfg.suite + '.c'
     if newerthan((cfg.cfgfile, cfg.progpath), main_c) :
         trace("  + %s" % main_c)
-        _proc_gen_main(cfg, main_c, modules)
+        _proc_gen_main(cfg, main_c)
     else :
         trace("  - %s" % main_c)
     # generate the modules
-    for mod_name, mod_in, mod_c in modules :
+    for mod in cfg.modules :
+        mod_in = os.path.join(cfg.srcdir, mod+'.in')
+        mod_c = mod+'.c'
         if newerthan((cfg.cfgfile, cfg.progpath, mod_in), mod_c) :
             trace("  + %s (%s)" % (mod_c, mod_in))
-            _proc_gen_source(cfg, mod_name, mod_in, mod_c)
+            _proc_gen_source(cfg, mod, mod_in, mod_c)
         else :
             trace("  - %s (%s)" % (mod_c, mod_in))
 
 # _proc_gen_main:
-def _proc_gen_main (cfg, main_c, modules) :
+def _proc_gen_main (cfg, main_c) :
     w = Writer()
     w.section('includes')
     w.section('fndecls')
@@ -496,8 +545,8 @@ def _proc_gen_main (cfg, main_c, modules) :
             'pif_suite_run(suite, ".");\n',
             'return 0;') # [todo]
     # modules
-    for mod_name, mod_in, mod_c in modules :
-        init_func = get_module_init_func(mod_name)
+    for mod in cfg.modules :
+        init_func = get_module_init_func(mod)
         w.write('fndecls',
                 'void %s ( PifSuite *suite );\n' % init_func)
         w.write('main.modinit',

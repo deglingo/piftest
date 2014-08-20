@@ -1,8 +1,0 @@
-
-[DEFAULT]
-
-srcdir = @srcdir@
-
-suite = piftest-test
-
-modules = test_*
