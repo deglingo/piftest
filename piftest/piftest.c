@@ -11,7 +11,34 @@
 /* [REMOVEME] */
 #define MAX_TESTS 1024
 
+typedef enum _PifNodeType PifNodeType;
+typedef union _PifNode PifNode;
+typedef struct _PifNodeAny PifNodeAny;
 typedef struct _PifTest PifTest;
+
+#define PIF_NODE_HEADER \
+  PifNodeType type; \
+  PifNode *parent; \
+  char *name; \
+  char *path;
+
+
+
+/* PifNodeType:
+ */
+enum _PifNodeType
+  {
+    PIF_NODE_TEST,
+  };
+
+
+
+/* PifNodeAny:
+ */
+struct _PifNodeAny
+{
+  PIF_NODE_HEADER;
+};
 
 
 
@@ -19,9 +46,20 @@ typedef struct _PifTest PifTest;
  */
 struct _PifTest
 {
-  char *path;
+  PIF_NODE_HEADER;
   PifTestFunc func;
   int data_size;
+};
+
+
+
+/* PifNode:
+ */
+union _PifNode
+{
+  PifNodeType type;
+  PifNodeAny any;
+  PifTest test;
 };
 
 
@@ -31,6 +69,8 @@ struct _PifTest
 struct _PifSuite
 {
   char *name;
+
+  /* [REMOVEME] */
   PifTest tests[MAX_TESTS];
   int n_tests;
 };
