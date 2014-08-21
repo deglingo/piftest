@@ -618,23 +618,43 @@ def proc_gen_makefile (cfg, subdir) :
             subst('CC'),
             'CCLD = $(CC)\n',
             'depcomp = $(top_srcdir)/depcomp\n', # [fixme] subst
-            subst('CCDEPMODE'))
-    # [fixme]
-    s.write_rule('all')
+            subst('CCDEPMODE'),
+            subst('PIFTEST'))
+    # check target
+    s.write('.PHONY: check\n')
     s.write_rule('check', cfg.suite, './%s' % cfg.suite)
-    s.write_rule('install')
+    # empty targets
+    empty_targets = ('all', 'install', 'uninstall', 'dvi', 'installcheck')
+    s.write('EMPTY_AUTOMAKE_TARGETS = %s\n' % ' '.join(empty_targets),
+            '.PHONY: $(EMPTY_AUTOMAKE_TARGETS)\n',
+            '$(EMPTY_AUTOMAKE_TARGETS):\n')
     # makefile regeneration
     s.write_rule('Makefile', ('$(srcdir)/Makefile.in', '$(top_builddir)/config.status'),
                  'cd $(top_builddir) && ./config.status --file=$(subdir)/Makefile')
-    s.write_rule('$(srcdir)/Makefile.in', [cfg.cfgfile, cfg.progpath],
-                 'cd $(top_srcdir) && %s -b $(abs_top_builddir)/$(subdir) -M $(subdir)' % cfg.progpath)
+    s.write_rule('$(srcdir)/Makefile.in', '$(srcdir)/piftest.conf',
+                 'cd $(top_srcdir) && $(PIFTEST) -b $(abs_top_builddir)/$(subdir) -M $(subdir)')
+    # distdir
+    cmds = [
+        '@echo "** DISTDIR **" >&2',
+        '@echo "pwd: `pwd`" >&2',
+        '@echo "DESTDIR: $(DESTDIR)" >&2',
+        '@echo "top_distdir: $(top_distdir) (`readlink -e $(top_distdir)`)" >&2',
+        '@echo "distdir: $(distdir) (`readlink -e $(distdir)`)" >&2',
+        'cp -vf $(srcdir)/Makefile.in $(distdir)',
+        'cp -vf $(srcdir)/piftest.conf $(srcdir)/test_*.in $(distdir)'
+    ]
+    s.write_rule('distdir', None, cmds)
+    # distclean
+    s.write('.PHONY: distclean\n')
+    s.write_rule('distclean', None,
+                 ('rm -rf .libs .deps',
+                  'rm -f %s *.c *.o *.lo *.stamp-h' % cfg.suite))
     # test suite program
     s.write_rule(cfg.suite, [cfg.suite+'.o'] + [m+'.o' for m in cfg.modules],
                  '$(LIBTOOL) --tag=CC --mode=link $(CCLD) -o $@ $^ $(LDFLAGS) %s' % cfg.ldflags)
     # object compilation
     s.write_rule('.c.o', None,
-                 ('test -d .deps || mkdir .deps', # [fixme]
-                  'source=$< object=$@ $(CCDEPMODE) DEPDIR=.deps lbtool=yes $(depcomp) $(LIBTOOL) --tag=CC --mode=compile $(CC) -c -o $@ $< $(CFLAGS) %s' % cfg.cflags))
+                 'source=$< object=$@ $(CCDEPMODE) DEPDIR=.deps libtool=yes $(depcomp) $(LIBTOOL) --tag=CC --mode=compile $(CC) -c -o $@ $< $(CFLAGS) %s' % cfg.cflags)
     # include deps
     s.write('include .deps/%s.Po\n' % cfg.suite)
     for m in cfg.modules :

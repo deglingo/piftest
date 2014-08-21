@@ -21,6 +21,15 @@ else
     AC_ERROR([python3 not found])
 fi
 
+# [fixme]
+AC_SUBST([PIFTEST], ['$(abs_top_builddir)/bin/piftest'])
+AC_SUBST([PIFTEST_DEPS], ['$(abs_top_builddir)/bin/piftest'])
+test -d test/.deps || mkdir -vp test/.deps
+for n in piftest-test test_base test_data test_setup test_tools test_lib; do
+    f="test/.deps/$n.Po"
+    test -e "$f" || echo "$n.o: $n.c" >"$f"
+done
+
 AC_CONFIG_FILES([ \
   Makefile \
   bin/Makefile \
