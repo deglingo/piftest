@@ -171,6 +171,7 @@ class Parser :
     RE_LEX = re.compile('|'.join('(?P<%s>%s)' % (n, r) for n, r in TOKEN_SPECS))
 
     RE_LOCATION = re.compile(r'#\s+(?P<LNO>\d+)\s+"(?P<FNAME>[^"]*)".*$')
+    RE_CPPDIRECTIVE = re.compile('^#(?P<DIR>#.*)$')
 
     # __init__:
     def __init__ (self, modname) :
@@ -375,6 +376,12 @@ class Parser :
                 self.lineno = int(m.group('LNO')) - 1
                 self.fname = m.group('FNAME')
                 self.buffer = ''
+                continue
+            m = Parser.RE_CPPDIRECTIVE.match(self.buffer)
+            if m is not None :
+                directive = m.group('DIR')
+                self.buffer = ''
+                return Token('CPP', directive+'\n')
         # get one token
         m = Parser.RE_LEX.match(self.buffer, self.pos)
         assert m is not None, self.buffer[self.pos:]
@@ -462,7 +469,7 @@ class ASTVisitor :
         self.context.unit_path = path
         # write headers
         for block in headers :
-            self.writer.wite('headers', block[2])
+            self.writer.write('headers', block[2])
         # register the data block
         if data is not None :
             self.context.data_stack = self.context.data_stack + (data,)
