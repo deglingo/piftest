@@ -199,6 +199,7 @@ class Parser :
     # parse_input:
     def parse_input (self) :
         body = []
+        headers = []
         data = None
         setup = None
         teardown = None
@@ -210,7 +211,9 @@ class Parser :
             if tok.tp == 'END' :
                 break
             elif tok.tp == 'IDENT' :
-                if tok.val == 'data' :
+                if tok.val == 'header' :
+                    headers.append(self.parse_header())
+                elif tok.val == 'data' :
                     if data is not None :
                         self.error("duplicated data block")
                         assert 0
@@ -247,8 +250,25 @@ class Parser :
                     body[index] = body[index][:2] + (name,) + body[index][3:]
                     break
         #
-        return ('unit', (), self.modname, data, setup, teardown, tuple(body))
+        return ('unit', (), self.modname, headers, data, setup, teardown, tuple(body))
 
+    # parse_header:
+    def parse_header (self) :
+        self.lex('IDENT', 'header')
+        self.lex('OPEN_BRACE')
+        code = []
+        depth = 1
+        while True :
+            tok = self.lex(raw=True)
+            if tok.tp == 'OPEN_BRACE' :
+                depth += 1
+            elif tok.tp == 'CLOSE_BRACE' :
+                depth -= 1
+                if depth == 0 :
+                    break
+            code.append(tok.val)
+        return ('header', (), ''.join(code))
+        
     # parse_data:
     def parse_data (self) :
         self.lex('IDENT', 'data')
@@ -400,6 +420,7 @@ class ASTVisitor :
         self.context.teardown_stack = ()
         self.writer = Writer()
         self.writer.section('top')
+        self.writer.section('headers')
         self.writer.section('includes')
         self.writer.section('typedefs')
         self.writer.section('datadefs')
@@ -432,13 +453,16 @@ class ASTVisitor :
 
     # visit_unit:
     def visit_unit (self, node) :
-        assert len(node) == 7, node
-        tp, loc, name, data, setup, teardown, body = node
+        assert len(node) == 8, node
+        tp, loc, name, headers, data, setup, teardown, body = node
         # get unit path
         path = self.context.unit_path
         if path == '' : path = name
         else : path = path + '.' + name
         self.context.unit_path = path
+        # write headers
+        for block in headers :
+            self.writer.wite('headers', block[2])
         # register the data block
         if data is not None :
             self.context.data_stack = self.context.data_stack + (data,)
