@@ -8,5 +8,5 @@ AC_DEFUN([AM_PATH_PIFTEST],
 AC_DEFUN([AM_PIFTEST_SUITE],
 [
     AC_REQUIRE([AM_PATH_PIFTEST])
-    # "$PIFTEST" -P $1 || AC_ERROR(piftest -P failed)
+    "$PIFTEST" -P $1 "$srcdir/$1/piftest.conf" || AC_ERROR(piftest -P failed)
 ])

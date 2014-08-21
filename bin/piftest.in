@@ -554,7 +554,7 @@ def main () :
     # create the config
     cfg = Config()
     # parse the command line
-    shortopts = 'GMs:b:'
+    shortopts = 'PGMs:b:'
     cmd = ''
     modules = None
     opts, args = getopt.gnu_getopt(sys.argv[1:], shortopts)
@@ -570,6 +570,11 @@ def main () :
             assert len(args) == 1, args
             subdir, = args
             cfgfile = os.path.join(subdir, 'piftest.conf')
+        elif o in ('-P',) :
+            assert not cmd
+            cmd = 'gen-po'
+            assert len(args) == 2, args
+            subdir, cfgfile = args
         elif o in ('-b',) :
             cfg.builddir = os.path.realpath(a)
         elif o in ('-s',) :
@@ -584,6 +589,8 @@ def main () :
         proc_gen_sources(cfg)
     elif cmd == 'gen-makefile' :
         proc_gen_makefile(cfg, subdir)
+    elif cmd == 'gen-po' :
+        proc_gen_po(cfg, subdir)
     else :
         assert 0, cmd
     
@@ -760,6 +767,18 @@ def _proc_gen_source (cfg, mod_name, mod_in, mod_c) :
     with open(tmpfile, 'wt') as f :
         visitor.writer.dump(f)
     os.rename(tmpfile, mod_c)
+
+# proc_gen_po:
+def proc_gen_po (cfg, subdir) :
+    trace("generating Po files")
+    depsdir = os.path.join(subdir, '.deps')
+    try: os.makedirs(depsdir)
+    except OSError as exc:
+        if exc.errno != errno.EEXIST : raise
+    for fname in [cfg.suite] + cfg.modules :
+        pofile = os.path.join(depsdir, fname+'.Po')
+        with open(pofile, 'wt') as f :
+            f.write('# dummy\n')
 
 # exec
 if __name__ == '__main__' :
