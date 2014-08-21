@@ -5,6 +5,7 @@ AM_INIT_AUTOMAKE
 : ${CFLAGS:=-g -Wall}
 
 # define some dirs
+AC_SUBST([aclocaldir], ['${datadir}/aclocal'])
 AC_SUBST([pkgconfigdir], '${libdir}/pkgconfig')
 
 AC_PROG_CC
