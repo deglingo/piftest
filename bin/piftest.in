@@ -160,6 +160,7 @@ class Parser :
         ('NOT', r'!'),
         ('EQUAL', r'='),
         ('STAR', r'\*'),
+        ('AMPER', r'&'),
         ('COMA', r','),
         ('SEMICOLON', r';'),
         ('OPEN_BRACE', r'\{'),
