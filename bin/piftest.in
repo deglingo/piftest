@@ -652,6 +652,8 @@ def proc_gen_makefile (cfg, subdir) :
             subst('top_srcdir'),
             subst('srcdir'),
             'subdir = %s\n' % subdir,
+            subst('CFLAGS'),
+            subst('LDFLAGS'),
             'LIBTOOL = libtool\n', # [fixme] subst('LIBTOOL'),
             subst('CC'),
             'CCLD = $(CC)\n',
