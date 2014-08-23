@@ -159,6 +159,7 @@ class Parser :
         ('NOTEQUAL', r'!='),
         ('GE', r'>='),
         ('LE', r'<='),
+        ('DOT', r'\.'),
         ('NOT', r'!'),
         ('EQUAL', r'='),
         ('STAR', r'\*'),
