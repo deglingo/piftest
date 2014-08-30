@@ -1,0 +1,11 @@
+/* -*- c -*- */
+
+unit
+{
+  test { PIF_CHECK(1); }
+  unit
+    {
+      test { PIF_CHECK(1); }
+    }
+}
+

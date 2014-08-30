@@ -205,6 +205,19 @@ class Parser :
         
     # parse_input:
     def parse_input (self) :
+        h, d, s, t, b = self.parse_unit_body('END')
+        return ('unit', (), self.modname, h, d, s, t, b)
+    
+    # parse_unit:
+    def parse_unit (self) :
+        self.lex('IDENT', 'unit')
+        self.lex('OPEN_BRACE')
+        h, d, s, t, b = self.parse_unit_body('CLOSE_BRACE')
+        self.lex('CLOSE_BRACE')
+        return ('unit', (), '', h, d, s, t, b)
+
+    # parse_unit_body:
+    def parse_unit_body (self, end) :
         body = []
         headers = []
         data = None
@@ -215,7 +228,7 @@ class Parser :
         anonymous = []
         while True :
             tok = self.look()
-            if tok.tp == 'END' :
+            if tok.tp == end :
                 break
             elif tok.tp == 'IDENT' :
                 if tok.val == 'header' :
@@ -235,6 +248,12 @@ class Parser :
                         self.error("duplicated teardown block")
                         assert 0
                     teardown = self.parse_teardown()
+                elif tok.val == 'unit' :
+                    unit = self.parse_unit()
+                    body.append(unit)
+                    assert unit[2] == '', unit # [todo]
+                    anonymous.append(index)
+                    index += 1
                 elif tok.val == 'test' :
                     test = self.parse_test()
                     body.append(test)
@@ -257,7 +276,7 @@ class Parser :
                     body[index] = body[index][:2] + (name,) + body[index][3:]
                     break
         #
-        return ('unit', (), self.modname, headers, data, setup, teardown, tuple(body))
+        return (headers, data, setup, teardown, tuple(body))
 
     # parse_header:
     def parse_header (self) :
