@@ -163,6 +163,7 @@ class Parser :
         ('NOT', r'!'),
         ('EQUAL', r'='),
         ('STAR', r'\*'),
+        ('MINUS', r'-'),
         ('GT', r'>'),
         ('LT', r'<'),
         ('AMPER', r'&'),
