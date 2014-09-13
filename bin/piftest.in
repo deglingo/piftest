@@ -488,6 +488,7 @@ class ASTVisitor :
     def visit_unit (self, node) :
         assert len(node) == 8, node
         tp, loc, name, headers, data, setup, teardown, body = node
+        has_tests = any((n[0] == 'test') for n in body)
         # get unit path
         path = self.context.unit_path
         if path == '' : path = name
@@ -516,25 +517,27 @@ class ASTVisitor :
         if teardown is not None :
             self.context.teardown_stack = self.context.teardown_stack + (teardown,)
         # write the setup func
-        setup_name = get_setup_func_name(path)
-        self.writer.write('fndecls', 'static void %s ( %s *data );\n' %
-                          (setup_name, data_name))
-        self.writer.write('fndefs',
-                          'static void %s ( %s *data )\n' % (setup_name, data_name),
-                          '{\n')
-        for block in self.context.setup_stack :
-            self.writer.write('fndefs', block[2])
-        self.writer.write('fndefs', '}\n')
+        if has_tests :
+            setup_name = get_setup_func_name(path)
+            self.writer.write('fndecls', 'static void %s ( %s *data );\n' %
+                              (setup_name, data_name))
+            self.writer.write('fndefs',
+                              'static void %s ( %s *data )\n' % (setup_name, data_name),
+                              '{\n')
+            for block in self.context.setup_stack :
+                self.writer.write('fndefs', block[2])
+            self.writer.write('fndefs', '}\n')
         # write the teardown func
-        teardown_name = get_teardown_func_name(path)
-        self.writer.write('fndecls', 'static void %s ( %s *data );\n' %
-                          (teardown_name, data_name))
-        self.writer.write('fndefs',
-                          'static void %s ( %s *data )\n' % (teardown_name, data_name),
-                          '{\n')
-        for block in reversed(self.context.teardown_stack) :
-            self.writer.write('fndefs', block[2])
-        self.writer.write('fndefs', '}\n')
+        if has_tests :
+            teardown_name = get_teardown_func_name(path)
+            self.writer.write('fndecls', 'static void %s ( %s *data );\n' %
+                              (teardown_name, data_name))
+            self.writer.write('fndefs',
+                              'static void %s ( %s *data )\n' % (teardown_name, data_name),
+                              '{\n')
+            for block in reversed(self.context.teardown_stack) :
+                self.writer.write('fndefs', block[2])
+            self.writer.write('fndefs', '}\n')
         # unit registration
         self.writer.write('modinit.body',
                           'pif_suite_register_unit(suite, "%s");\n' % path)
