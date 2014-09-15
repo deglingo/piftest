@@ -155,6 +155,8 @@ class Parser :
         ('STRING', r'"[^"]*"'), # [fixme]
         ('INT', r'[0-9]+'),
         ('ARROW', r'->'),
+        ('AND', r'&&'),
+        ('OR', r'\|\|'),
         ('EQUALEQUAL', r'=='),
         ('NOTEQUAL', r'!='),
         ('GE', r'>='),
