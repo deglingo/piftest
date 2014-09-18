@@ -783,12 +783,19 @@ def _proc_gen_main (cfg, main_c) :
     w.section('main.foot')
     # includes
     w.write('includes',
-            '#include <piftest.h>\n')
+            '#include <piftest.h>\n',
+            '#include <stdlib.h>\n',
+            '#include <string.h>\n')
     # main wrapper
     w.write('mainwrap',
             'int main ( int argc, char **argv )\n',
             '{\n',
-            '  return piftest_main(argc, argv, _main);\n',
+            '  PifConfig *config = malloc(sizeof(PifConfig));\n',
+            '  memset(config, 0, sizeof(PifConfig));\n',
+            '  config->argc = argc;\n',
+            '  config->argv = argv;\n',
+            '  config->main_func = _main;\n',
+            '  return piftest_main(config);\n',
             '}\n')
     # main
     w.write('fndecls', 'static int _main ( void );\n')

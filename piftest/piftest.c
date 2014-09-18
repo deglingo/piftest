@@ -9,6 +9,7 @@
 #include <stdarg.h>
 
 
+
 /* [REMOVEME] */
 #define MAX_TESTS 1024
 
@@ -83,12 +84,10 @@ struct _PifSuite
 
 /* piftest_main:
  */
-int piftest_main ( int argc,
-                   char **argv,
-                   PifMainFunc main_func )
+int piftest_main ( PifConfig *config )
 {
   int r;
-  r = main_func();
+  r = config->main_func();
   return r;
 }
 
