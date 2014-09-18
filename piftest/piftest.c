@@ -81,6 +81,19 @@ struct _PifSuite
 
 
 
+/* piftest_main:
+ */
+int piftest_main ( int argc,
+                   char **argv,
+                   PifMainFunc main_func )
+{
+  int r;
+  r = main_func();
+  return r;
+}
+
+
+
 /* pif_suite_new:
  */
 PifSuite *pif_suite_new ( const char *name )

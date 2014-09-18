@@ -773,6 +773,7 @@ def _proc_gen_main (cfg, main_c) :
     w = Writer()
     w.section('includes')
     w.section('fndecls')
+    w.section('mainwrap')
     w.section('main')
     w.section('main.head')
     w.section('main.decls')
@@ -783,9 +784,16 @@ def _proc_gen_main (cfg, main_c) :
     # includes
     w.write('includes',
             '#include <piftest.h>\n')
+    # main wrapper
+    w.write('mainwrap',
+            'int main ( int argc, char **argv )\n',
+            '{\n',
+            '  return piftest_main(argc, argv, _main);\n',
+            '}\n')
     # main
+    w.write('fndecls', 'static int _main ( void );\n')
     w.write('main.head',
-            'int main ()\n',
+            'static int _main ( void )\n',
             '{\n')
     w.write('main.foot',
             '}\n')
