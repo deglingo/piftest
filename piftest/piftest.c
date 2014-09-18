@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 
 
@@ -82,13 +83,41 @@ struct _PifSuite
 
 
 
+/* _valgrind_command:
+ */
+static char **_valgrind_command ( PifConfig *config )
+{
+  int cmdsize = 16;
+  char **cmd = malloc(sizeof(char *) * cmdsize);
+  int nargs = 0;
+  cmd[nargs++] = "valgrind";
+  cmd[nargs++] = "--leak-check=yes";
+  cmd[nargs++] = "--gen-suppressions=all";
+  cmd[nargs++] = config->argv[0];
+  cmd[nargs++] = "-R";
+  cmd[nargs++] = NULL;
+  return cmd;
+}
+
+
+
 /* piftest_main:
  */
 int piftest_main ( PifConfig *config )
 {
   int r;
-  r = config->main_func();
-  return r;
+  if (config->argc > 1 && !strcmp(config->argv[1], "-R"))
+    {
+      r = config->main_func();
+      return r;
+    }
+  else
+    {
+      char **cmd = _valgrind_command(config);
+      execvp("valgrind", cmd);
+      fprintf(stderr, "exec(valgrind) failed!\n");
+      abort();
+    }
 }
 
 
