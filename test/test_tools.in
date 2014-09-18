@@ -1,1 +1,7 @@
 /* -*- c -*- */
+
+test {
+  char *a = "abc";
+  char *b = "abc";
+  PIF_CHECK_EQ_STR(a, b);
+}

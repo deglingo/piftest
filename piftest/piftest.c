@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 
 /* [REMOVEME] */
@@ -153,4 +154,46 @@ void pif_suite_run ( PifSuite *suite,
         free(data);
     }
   fprintf(stderr, "\n");
+}
+
+
+
+/* pif_check:
+ */
+void pif_check ( const char *fname,
+                 int lineno,
+                 int expr,
+                 const char *sexpr,
+                 ... )
+{
+  va_list args;
+  const char *vname;
+  if (expr)
+    {
+      /* success */
+      return;
+    }
+  else
+    {
+      fprintf(stderr, "\n%s:%d: TEST FAILED:\n -> `%s'\n",
+              fname, lineno, sexpr);
+    }
+  va_start(args, sexpr);
+  while ((vname = va_arg(args, const char *)))
+    {
+      fprintf(stderr, "  - %s = ", vname);
+      const char *vtp = va_arg(args, const char *);
+      switch(vtp[0])
+        {
+        case 's':
+          fprintf(stderr, "%s", va_arg(args, const char *));
+          break;
+        default:
+          fprintf(stderr, "\n[TODO] vtp '%s'", vtp);
+          abort();
+        }
+      fprintf(stderr, "\n");
+    }
+  va_end(args);
+  abort();
 }
