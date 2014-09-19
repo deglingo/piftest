@@ -151,6 +151,19 @@ PifSuite *pif_suite_new ( const char *name )
 
 
 
+/* pif_suite_destroy:
+ */
+void pif_suite_destroy ( PifSuite *suite )
+{
+  int s;
+  for (s = 0; s < suite->n_tests; s++)
+    free(suite->tests[s].path);
+  free(suite->name);
+  free(suite);
+}
+
+
+
 /* pif_suite_register_unit:
  */
 void pif_suite_register_unit ( PifSuite *suite,

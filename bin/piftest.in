@@ -896,6 +896,7 @@ def _proc_gen_main (cfg, main_c) :
     # run
     w.write('main.body',
             'pif_suite_run(suite, ".");\n',
+            'pif_suite_destroy(suite);\n',
             'return 0;') # [todo]
     # modules
     for mod in cfg.modules :

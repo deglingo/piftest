@@ -29,6 +29,7 @@ struct _PifConfig
 
 int piftest_main ( PifConfig *config );
 PifSuite *pif_suite_new ( const char *name );
+void pif_suite_destroy ( PifSuite *suite );
 void pif_suite_register_unit ( PifSuite *suite,
                                const char *path );
 void pif_suite_register_test ( PifSuite *suite,
