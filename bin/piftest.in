@@ -628,7 +628,7 @@ def main () :
     # create the config
     cfg = Config()
     # parse the command line
-    shortopts = 'IMGt:s:'
+    shortopts = 'IPMGt:s:'
     cmd = ''
     modules = None
     opts, args = getopt.gnu_getopt(sys.argv[1:], shortopts)
@@ -650,6 +650,11 @@ def main () :
             assert not args, args
             cmd = 'gen-sources'
             cfgfile = 'piftest.conf'
+        elif o in ('-P',) :
+            assert not cmd
+            assert not args, args
+            cmd = 'gen-po'
+            cfgfile = 'piftest.conf'
         elif o in ('-t',) :
             cfg.top_srcdir = os.path.realpath(a)
         elif o in ('-s',) :
@@ -667,6 +672,8 @@ def main () :
         proc_gen_sources(cfg)
     elif cmd == 'gen-makefile' :
         proc_gen_makefile(cfg)
+    elif cmd == 'gen-po' :
+        proc_gen_po(cfg)
     else :
         assert 0, cmd
 
@@ -908,17 +915,17 @@ def _proc_gen_source (cfg, mod_name, mod_in, mod_c) :
         visitor.writer.dump(f)
     os.rename(tmpfile, mod_c)
 
-# # proc_gen_po:
-# def proc_gen_po (cfg, subdir) :
-#     trace("generating Po files")
-#     depsdir = os.path.join(subdir, '.deps')
-#     try: os.makedirs(depsdir)
-#     except OSError as exc:
-#         if exc.errno != errno.EEXIST : raise
-#     for fname in [cfg.suite] + cfg.modules :
-#         pofile = os.path.join(depsdir, fname+'.Po')
-#         with open(pofile, 'wt') as f :
-#             f.write('# dummy\n')
+# proc_gen_po:
+def proc_gen_po (cfg) :
+    trace("generating Po files")
+    depsdir = '.deps'
+    try: os.makedirs(depsdir)
+    except OSError as exc:
+        if exc.errno != errno.EEXIST : raise
+    for fname in [cfg.suite] + cfg.modules :
+        pofile = os.path.join(depsdir, fname+'.Po')
+        with open(pofile, 'wt') as f :
+            f.write('# dummy\n')
 
 # exec
 if __name__ == '__main__' :
