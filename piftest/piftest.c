@@ -95,6 +95,10 @@ static char **_valgrind_command ( PifConfig *config )
   cmd[nargs++] = "--quiet";
   cmd[nargs++] = "--leak-check=yes";
   cmd[nargs++] = "--fullpath-after=";
+  cmd[nargs++] = "--track-fds=yes";
+  cmd[nargs++] = "--num-callers=50";
+  cmd[nargs++] = "--show-below-main=yes";
+  cmd[nargs++] = "--read-var-info=yes";
   cmd[nargs++] = "--gen-suppressions=all";
   for (supp = config->valgrind_supp_files; *supp; supp++) {
     /* [FIXME] assert nargs < cmdsize */
