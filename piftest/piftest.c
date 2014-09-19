@@ -106,18 +106,18 @@ static char **_valgrind_command ( PifConfig *config )
 int piftest_main ( PifConfig *config )
 {
   int r;
-  if (config->argc > 1 && !strcmp(config->argv[1], "-R"))
-    {
+  /* if (config->argc > 1 && !strcmp(config->argv[1], "-R")) */
+  /*   { */
       r = config->main_func();
       return r;
-    }
-  else
-    {
-      char **cmd = _valgrind_command(config);
-      execvp("valgrind", cmd);
-      fprintf(stderr, "exec(valgrind) failed!\n");
-      abort();
-    }
+  /*   } */
+  /* else */
+  /*   { */
+  /*     char **cmd = _valgrind_command(config); */
+  /*     execvp("valgrind", cmd); */
+  /*     fprintf(stderr, "exec(valgrind) failed!\n"); */
+  /*     abort(); */
+  /*   } */
 }
 
 
