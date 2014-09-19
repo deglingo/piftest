@@ -823,7 +823,7 @@ def proc_gen_makefile (cfg) :
     # trace("************")
     tmpfile = makefile + '.tmp'
     with open(tmpfile, 'wt') as f :
-        w.dump(f)
+        w.dump(f, makefile)
     os.rename(tmpfile, makefile)
     
 # proc_gen_sources:
