@@ -3,7 +3,8 @@
 
 import sys, os, getopt, configparser, subprocess, re, pprint, tempfile, shlex, glob, errno
 
-DEBUG = False
+DEBUG = ('PIFTEST_DEBUG' in os.environ
+         and os.environ['PIFTEST_DEBUG'])
 
 # trace:
 def trace (msg) :
