@@ -6,8 +6,8 @@ AC_DEFUN([AM_PATH_PIFTEST],
     PKG_CHECK_MODULES([PIFTEST], [piftest])
 ])
 # #
-AC_DEFUN([AM_PIFTEST_SUITE],
-[
-    AC_REQUIRE([AM_PATH_PIFTEST])
-    "$PIFTEST" -P $1 "$srcdir/$1/piftest.conf" || AC_ERROR(piftest -P failed)
-])
+# AC_DEFUN([AM_PIFTEST_SUITE],
+# [
+#     AC_REQUIRE([AM_PATH_PIFTEST])
+#     "$PIFTEST" -I $1 "$srcdir/$1/piftest.conf" || AC_ERROR(piftest -P failed)
+# ])

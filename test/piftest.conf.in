@@ -1,0 +1,16 @@
+
+[DEFAULT]
+
+suite = piftest-test
+
+modules = @PIFTEST_TEST_MODULES@
+  # test_base
+  # test_data
+  # test_setup
+  # test_unit
+  # test_tools
+  # test_lib
+
+cflags = -I@top_srcdir@/piftest
+
+ldflags = -L@top_builddir@/piftest -lpiftest

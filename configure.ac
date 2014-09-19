@@ -25,10 +25,27 @@ fi
 # [fixme]
 AC_SUBST([PIFTEST], ['$(abs_top_builddir)/bin/piftest'])
 AC_SUBST([PIFTEST_DEPS], ['$(abs_top_builddir)/bin/piftest'])
-test -d test/.deps || mkdir -vp test/.deps
-for n in piftest-test test_base test_data test_setup test_tools test_lib; do
-    f="test/.deps/$n.Po"
-    test -e "$f" || echo "$n.o: $n.c" >"$f"
+dnl test -d test/.deps || mkdir -vp test/.deps
+dnl for n in piftest-test test_base test_data test_setup test_tools test_lib; do
+dnl     f="test/.deps/$n.Po"
+dnl     test -e "$f" || echo "$n.o: $n.c" >"$f"
+dnl done
+
+# the test suite modules must be defined here so we can generate the
+# .Po files at configure time
+m4_define([piftest_test_modules], [ \
+  test_base \
+  test_data \
+  test_setup \
+  test_unit \
+  test_tools \
+  test_lib \
+])
+AC_SUBST([PIFTEST_TEST_MODULES], 'm4_map_args_w(piftest_test_modules, [], [], [ ])')
+mkdir -vp test/.deps
+for mod in piftest-test $PIFTEST_TEST_MODULES; do
+    echo "creating test/.deps/$mod.Po"
+    echo "$mod.o: $mod.c" >test/.deps/$mod.Po
 done
 
 AC_CONFIG_FILES([ \

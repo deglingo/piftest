@@ -4,14 +4,17 @@
 # generate the 'real' one before piftest is built.
 #
 
-abs_top_builddir = @abs_top_builddir@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 srcdir = @srcdir@
 subdir = test
+PIFTEST = $(top_builddir)/bin/piftest
+
+piftest.conf: $(srcdir)/piftest.conf.in $(top_builddir)/config.status
+	cd $(top_builddir) && ./config.status --file=$(subdir)/piftest.conf
 
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	cd $(top_builddir) && ./config.status --file=$(subdir)/Makefile
 
-$(srcdir)/Makefile.in: $(top_builddir)/bin/piftest
-	cd $(top_srcdir) && $(abs_top_builddir)/bin/piftest -b $(abs_top_builddir)/$(subdir) -M $(subdir)
+$(srcdir)/Makefile.in: piftest.conf $(top_builddir)/bin/piftest
+	$(PIFTEST) -t $(top_srcdir) -s $(subdir) -M

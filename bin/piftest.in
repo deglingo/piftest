@@ -14,10 +14,18 @@ def trace (msg) :
 # Config:
 class Config :
 
+    srcdir = property(lambda s: s.get_srcdir())
+    
     # __init__:
     def __init__ (self) :
         self.progpath = os.path.realpath(sys.argv[0])
-        self.builddir = ''
+        self.top_srcdir = ''
+        self.subdir = ''
+
+    def get_srcdir (self) :
+        assert self.top_srcdir
+        assert self.subdir
+        return os.path.join(self.top_srcdir, self.subdir)
 
     # read_file:
     def read_file (self, cfgfile) :
@@ -620,61 +628,101 @@ def main () :
     # create the config
     cfg = Config()
     # parse the command line
-    shortopts = 'PGMs:b:'
+    shortopts = 'IMGt:s:'
     cmd = ''
     modules = None
     opts, args = getopt.gnu_getopt(sys.argv[1:], shortopts)
     for o, a in opts :
-        if o in ('-G',) :
+        if o in ('-I',) :
             assert not cmd
-            cmd = 'gen-sources'
             assert len(args) == 1, args
-            cfgfile, = args
+            cmd = 'init'
+            cfgfile = None
+            cfg.top_srcdir = os.path.realpath(os.getcwd())
+            cfg.subdir, = args
         elif o in ('-M',) :
             assert not cmd
+            assert not args, args
             cmd = 'gen-makefile'
-            assert len(args) == 1, args
-            subdir, = args
-            cfgfile = os.path.join(subdir, 'piftest.conf')
-        elif o in ('-P',) :
+            cfgfile = 'piftest.conf'
+        elif o in ('-G',) :
             assert not cmd
-            cmd = 'gen-po'
-            assert len(args) == 2, args
-            subdir, cfgfile = args
-        elif o in ('-b',) :
-            cfg.builddir = os.path.realpath(a)
+            assert not args, args
+            cmd = 'gen-sources'
+            cfgfile = 'piftest.conf'
+        elif o in ('-t',) :
+            cfg.top_srcdir = os.path.realpath(a)
         elif o in ('-s',) :
-            cfg.srcdir = a
+            cfg.subdir = a
         else :
             assert 0, (o, a)
     assert cmd
     # read the config file
-    cfg.read_file(cfgfile)
+    if cfgfile is not None :
+        cfg.read_file(cfgfile)
     # process
-    if cmd == 'gen-sources' :
+    if cmd == 'init' :
+        proc_init(cfg)
+    elif cmd == 'gen-sources' :
         proc_gen_sources(cfg)
     elif cmd == 'gen-makefile' :
-        proc_gen_makefile(cfg, subdir)
-    elif cmd == 'gen-po' :
-        proc_gen_po(cfg, subdir)
+        proc_gen_makefile(cfg)
     else :
         assert 0, cmd
+
+# _write_makefile rules:
+def _write_makefile_rules (cfg, s) :
+    s.write_rule('piftest.conf',
+                 ['$(srcdir)/piftest.conf.in', '$(top_builddir)/config.status'],
+                 'cd $(top_builddir) && ./config.status --file=$(subdir)/piftest.conf')
+    s.write_rule('Makefile',
+                 ['$(srcdir)/Makefile.in', '$(top_builddir)/config.status'],
+                 'cd $(top_builddir) && ./config.status --file=$(subdir)/Makefile')
+    s.write_rule('$(srcdir)/Makefile.in',
+                 'piftest.conf',
+                 '$(PIFTEST) -t $(top_srcdir) -s $(subdir) -M')
+    
+# proc_init:
+#
+# Called at bootstrap time. Just generate a dummy makefile which only
+# contains the rules to rebuild itself and the config file.
+#
+def proc_init (cfg) :
+    makefile = os.path.join(cfg.top_srcdir, cfg.subdir, 'Makefile.in')
+    trace("init: generating makefile '%s'" % makefile)
+    w = Writer()
+    s = w.get_section('')
+    def subst (n) :
+        return '%s = @%s@\n' % (n, n)
+    s.write('# dummy makefile\n')
+    s.write(subst('top_srcdir'),
+            subst('srcdir'),
+            subst('top_builddir'),
+            subst('PIFTEST'),
+            'subdir = %s\n' % cfg.subdir)
+    _write_makefile_rules(cfg, s)
+    # output
+    tmpfile = makefile + '.tmp'
+    with open(tmpfile, "wt") as f :
+        s.dump(f)
+    os.rename(tmpfile, makefile)
     
 # proc_gen_makefile:
-def proc_gen_makefile (cfg, subdir) :
-    makefile = os.path.realpath(os.path.join(subdir, 'Makefile.in'))
+def proc_gen_makefile (cfg) :
+    assert cfg.top_srcdir
+    assert cfg.subdir
+    makefile = os.path.join(cfg.top_srcdir, cfg.subdir, 'Makefile.in')
     trace("generating makefile '%s'" % makefile)
     # [fixme] create the Po files
-    if cfg.builddir :
-        depsdir = os.path.join(cfg.builddir, '.deps')
-        try: os.mkdir(depsdir)
-        except OSError as exc:
-            if exc.errno != errno.EEXIST : raise
-        for base in [cfg.suite] + cfg.modules :
-            pofile = os.path.join(depsdir, base+'.Po')
-            if not os.path.exists(pofile) :
-                with open(pofile, 'wt') as f :
-                    f.write('%s.o: %s.c\n' % (base, base))
+    depsdir = '.deps'
+    try: os.mkdir(depsdir)
+    except OSError as exc:
+        if exc.errno != errno.EEXIST : raise
+    for base in [cfg.suite] + cfg.modules :
+        pofile = os.path.join(depsdir, base+'.Po')
+        if not os.path.exists(pofile) :
+            with open(pofile, 'wt') as f :
+                f.write('%s.o: %s.c\n' % (base, base))
     # create the writer
     w = Writer()
     s = w.get_section('')
@@ -686,7 +734,7 @@ def proc_gen_makefile (cfg, subdir) :
             subst('top_builddir'),
             subst('top_srcdir'),
             subst('srcdir'),
-            'subdir = %s\n' % subdir,
+            'subdir = %s\n' % cfg.subdir,
             subst('CFLAGS'),
             subst('LDFLAGS'),
             'LIBTOOL = libtool\n', # [fixme] subst('LIBTOOL'),
@@ -704,10 +752,7 @@ def proc_gen_makefile (cfg, subdir) :
             '.PHONY: $(EMPTY_AUTOMAKE_TARGETS)\n',
             '$(EMPTY_AUTOMAKE_TARGETS):\n')
     # makefile regeneration
-    s.write_rule('Makefile', ('$(srcdir)/Makefile.in', '$(top_builddir)/config.status'),
-                 'cd $(top_builddir) && ./config.status --file=$(subdir)/Makefile')
-    s.write_rule('$(srcdir)/Makefile.in', '$(srcdir)/piftest.conf',
-                 'cd $(top_srcdir) && $(PIFTEST) -b $(abs_top_builddir)/$(subdir) -M $(subdir)')
+    _write_makefile_rules(cfg, s)
     # distdir
     cmds = [
         '@echo "** DISTDIR **" >&2',
@@ -716,7 +761,7 @@ def proc_gen_makefile (cfg, subdir) :
         '@echo "top_distdir: $(top_distdir) (`readlink -e $(top_distdir)`)" >&2',
         '@echo "distdir: $(distdir) (`readlink -e $(distdir)`)" >&2',
         'cp -vf $(srcdir)/Makefile.in $(distdir)',
-        'cp -vf $(srcdir)/piftest.conf $(srcdir)/test_*.in $(distdir)'
+        'cp -vf $(srcdir)/piftest.conf.in $(srcdir)/test_*.in $(distdir)'
     ]
     s.write_rule('distdir', None, cmds)
     # distclean
@@ -738,7 +783,7 @@ def proc_gen_makefile (cfg, subdir) :
     s.write_rule([cfg.suite+'.c'] + [m+'.c' for m in cfg.modules],
                  cfg.suite+'.stamp-h')
     s.write_rule(cfg.suite+'.stamp-h', ['$(srcdir)/'+m+'.in' for m in cfg.modules] + [cfg.cfgfile, cfg.progpath],
-                 ('%s -s $(srcdir) -G %s' % (cfg.progpath, cfg.cfgfile),
+                 ('$(PIFTEST) -t $(top_srcdir) -s $(subdir) -G',
                   'echo >$@'))
     # output
     # trace("** OUTPUT **")
@@ -751,6 +796,8 @@ def proc_gen_makefile (cfg, subdir) :
     
 # proc_gen_sources:
 def proc_gen_sources (cfg) :
+    assert cfg.top_srcdir
+    assert cfg.subdir
     trace("generating sources")
     # generate the main C file (<suite>.c)
     main_c = cfg.suite + '.c'
@@ -851,17 +898,17 @@ def _proc_gen_source (cfg, mod_name, mod_in, mod_c) :
         visitor.writer.dump(f)
     os.rename(tmpfile, mod_c)
 
-# proc_gen_po:
-def proc_gen_po (cfg, subdir) :
-    trace("generating Po files")
-    depsdir = os.path.join(subdir, '.deps')
-    try: os.makedirs(depsdir)
-    except OSError as exc:
-        if exc.errno != errno.EEXIST : raise
-    for fname in [cfg.suite] + cfg.modules :
-        pofile = os.path.join(depsdir, fname+'.Po')
-        with open(pofile, 'wt') as f :
-            f.write('# dummy\n')
+# # proc_gen_po:
+# def proc_gen_po (cfg, subdir) :
+#     trace("generating Po files")
+#     depsdir = os.path.join(subdir, '.deps')
+#     try: os.makedirs(depsdir)
+#     except OSError as exc:
+#         if exc.errno != errno.EEXIST : raise
+#     for fname in [cfg.suite] + cfg.modules :
+#         pofile = os.path.join(depsdir, fname+'.Po')
+#         with open(pofile, 'wt') as f :
+#             f.write('# dummy\n')
 
 # exec
 if __name__ == '__main__' :
