@@ -74,6 +74,11 @@ class Writer :
     def write (self, section, *text) :
         s = self.get_section(section)
         s.write(*text)
+
+    # write_loc:
+    def write_loc (self, section) :
+        s = self.get_section(section)
+        s.write_loc()
         
     # write_rule:
     def write_rule (self, section, targets, prereqs=None, recipe=None) :
@@ -81,8 +86,16 @@ class Writer :
         s.write_rule(targets, prereqs, recipe)
 
     # dump:
-    def dump (self, f) :
-        self.root.dump(f)
+    def dump (self, f, fname) :
+        ctxt = WriterContext(os.path.realpath(fname))
+        self.root.dump(f, ctxt)
+
+# WriterContext:
+class WriterContext :
+
+    def __init__ (self, fname) :
+        self.fname = fname
+        self.lineno = 1
 
 # WSection:
 class WSection :
@@ -100,13 +113,17 @@ class WSection :
         self.children[name] = child
         
     # dump:
-    def dump (self, f) :
+    def dump (self, f, ctxt) :
         for n in self.nodes :
-            n.dump(f)
+            n.dump(f, ctxt)
 
     # write:
     def write (self, *text) :
         self.nodes.extend(WText(t) for t in text)
+
+    # write_loc:
+    def write_loc (self) :
+        self.nodes.append(WLocation())
 
     # write_rule:
     def write_rule (self, targets, prereqs=None, recipe=None) :
@@ -120,8 +137,17 @@ class WText :
         self.text = text
 
     # dump:
-    def dump (self, f) :
+    def dump (self, f, ctxt) :
         f.write(self.text)
+        ctxt.lineno += self.text.count('\n')
+
+# WLocation:
+class WLocation :
+
+    # dump:
+    def dump (self, f, ctxt) :
+        f.write('\n# %d "%s"\n' % (ctxt.lineno, ctxt.fname))
+        ctxt.lineno += 2
 
 # WRule:
 class WRule :
@@ -138,7 +164,8 @@ class WRule :
         else : return tuple(arg)
 
     # dump:
-    def dump (self, f) :
+    def dump (self, f, ctxt) :
+        # [fixme] this ignores ctxt !?
         f.write(' '.join(self.targets))
         f.write(': ')
         f.write(' '.join(self.prereqs))
@@ -149,9 +176,10 @@ class WRule :
 # Token:
 class Token :
 
-    def __init__ (self, tp, val='') :
+    def __init__ (self, tp, val='', loc=()) :
         self.tp = tp
         self.val = val
+        self.loc = tuple(loc)
 
     def __repr__ (self) :
         return '<%s "%s">' % (self.tp, self.val.replace('\n', '\\n'))
@@ -315,59 +343,32 @@ class Parser :
     # parse_data:
     def parse_data (self) :
         self.lex('IDENT', 'data')
-        self.lex('OPEN_BRACE')
-        code = []
-        depth = 1
-        while True :
-            tok = self.lex(raw=True)
-            if tok.tp == 'OPEN_BRACE' :
-                depth += 1
-            elif tok.tp == 'CLOSE_BRACE' :
-                depth -= 1
-                if depth == 0 :
-                    break
-            code.append(tok.val)
-        return ('data', (), ''.join(code))
+        code = self.parse_code()
+        return ('data', (), code)
 
     # parse_setup:
     def parse_setup (self) :
         self.lex('IDENT', 'setup')
-        self.lex('OPEN_BRACE')
-        code = []
-        depth = 1
-        while True :
-            tok = self.lex(raw=True)
-            if tok.tp == 'OPEN_BRACE' :
-                depth += 1
-            elif tok.tp == 'CLOSE_BRACE' :
-                depth -= 1
-                if depth == 0 :
-                    break
-            code.append(tok.val)
-        return ('setup', (), ''.join(code))
+        code = self.parse_code()
+        return ('setup', (), code)
 
     # parse_teardown:
     def parse_teardown (self) :
         self.lex('IDENT', 'teardown')
-        self.lex('OPEN_BRACE')
-        code = []
-        depth = 1
-        while True :
-            tok = self.lex(raw=True)
-            if tok.tp == 'OPEN_BRACE' :
-                depth += 1
-            elif tok.tp == 'CLOSE_BRACE' :
-                depth -= 1
-                if depth == 0 :
-                    break
-            code.append(tok.val)
-        return ('teardown', (), ''.join(code))
+        code = self.parse_code()
+        return ('teardown', (), code)
 
     # parse_test:
     def parse_test (self) :
         self.lex('IDENT', 'test')
         name = '' # [fixme]
-        self.lex('OPEN_BRACE')
+        code = self.parse_code()
+        return ('test', (), name, code)
+
+    # parse_code:
+    def parse_code (self) :
+        tok = self.lex('OPEN_BRACE')
+        loc = tok.loc
         code = []
         depth = 1
         while True :
@@ -379,7 +380,7 @@ class Parser :
                 if depth == 0 :
                     break
             code.append(tok.val)
-        return ('test', (), name, ''.join(code))
+        return ('code', loc, ''.join(code))
 
     # lex:
     def lex (self, tp=None, val=None, raw=False) :
@@ -411,19 +412,21 @@ class Parser :
             self.pos = 0
             self.buffer = self.fin.readline()
             self.lineno += 1
+            self.loc = (self.fname, self.lineno)
             if self.buffer == '' :
-                return Token('END')
+                return Token('END', loc=self.loc)
             m = Parser.RE_LOCATION.match(self.buffer)
             if m is not None :
                 self.lineno = int(m.group('LNO')) - 1
                 self.fname = m.group('FNAME')
+                self.loc = (self.fname, self.lineno)
                 self.buffer = ''
                 continue
             m = Parser.RE_CPPDIRECTIVE.match(self.buffer)
             if m is not None :
                 directive = m.group('DIR')
                 self.buffer = ''
-                return Token('CPP', directive+'\n')
+                return Token('CPP', directive+'\n', loc=self.loc)
         # get one token
         m = Parser.RE_LEX.match(self.buffer, self.pos)
         assert m is not None, self.buffer[self.pos:]
@@ -431,7 +434,7 @@ class Parser :
         tp = m.lastgroup
         val = self.buffer[m.start():m.end()]
         self.pos = m.end()
-        return Token(tp, val)
+        return Token(tp, val, loc=self.loc)
 
 # ASTContext:
 class ASTContext :
@@ -524,7 +527,7 @@ class ASTVisitor :
                           'struct _%s\n' % data_name,
                           '{\n')
         for block in self.context.data_stack :
-            self.writer.write('datadefs', block[2])
+            self.write_code('datadefs', block[2])
         self.writer.write('datadefs', '};\n')
         # register the setup
         if setup is not None :
@@ -541,7 +544,7 @@ class ASTVisitor :
                               'static void %s ( %s *data )\n' % (setup_name, data_name),
                               '{\n')
             for block in self.context.setup_stack :
-                self.writer.write('fndefs', block[2])
+                self.write_code('fndefs', block[2])
             self.writer.write('fndefs', '}\n')
         # write the teardown func
         if has_tests :
@@ -552,7 +555,7 @@ class ASTVisitor :
                               'static void %s ( %s *data )\n' % (teardown_name, data_name),
                               '{\n')
             for block in reversed(self.context.teardown_stack) :
-                self.writer.write('fndefs', block[2])
+                self.write_code('fndefs', block[2])
             self.writer.write('fndefs', '}\n')
         # unit registration
         self.writer.write('modinit.body',
@@ -583,10 +586,20 @@ class ASTVisitor :
         self.writer.write('fndefs',
                           'static void %s ( %s *data )\n' % (test_func, data_name),
                           '{\n')
-        self.writer.write('fndefs', code)
+        self.write_code('fndefs', code)
         self.writer.write('fndefs',
                           '}\n')
-        
+
+    # write_code:
+    def write_code (self, section, code) :
+        assert code[0] == 'code', code
+        tp, loc, text = code
+        self.writer.write(section,
+                          '\n',
+                          '# %d "%s"\n' % (loc[1], loc[0]),
+                          text,
+                          '\n')
+        self.writer.write_loc(section)
 
 # get_module_init_func:
 def get_module_init_func (modname) :
@@ -895,7 +908,7 @@ def _proc_gen_main (cfg, main_c) :
     # output
     tmpfile = main_c + '.tmp'
     with open(tmpfile, 'wt') as f :
-        w.dump(f)
+        w.dump(f, main_c)
     os.rename(tmpfile, main_c)
 
 # _proc_gen_source:
@@ -919,7 +932,7 @@ def _proc_gen_source (cfg, mod_name, mod_in, mod_c) :
     # output
     tmpfile = mod_c + '.tmp'
     with open(tmpfile, 'wt') as f :
-        visitor.writer.dump(f)
+        visitor.writer.dump(f, mod_c)
     os.rename(tmpfile, mod_c)
 
 # proc_gen_po:
