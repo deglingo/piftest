@@ -735,7 +735,7 @@ def proc_init (cfg) :
     # output
     tmpfile = makefile + '.tmp'
     with open(tmpfile, "wt") as f :
-        s.dump(f)
+        w.dump(f, makefile)
     os.rename(tmpfile, makefile)
     
 # proc_gen_makefile:

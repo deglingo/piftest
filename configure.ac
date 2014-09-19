@@ -2,7 +2,7 @@ AC_INIT([piftest], [0.0.0])
 AM_INIT_AUTOMAKE
 
 # fix default CFLAGS
-: ${CFLAGS:=-g -Wall}
+: ${CFLAGS:=-g -O0 -Wall}
 
 # define some dirs
 AC_SUBST([aclocaldir], ['${datadir}/aclocal'])
