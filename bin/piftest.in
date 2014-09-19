@@ -32,6 +32,7 @@ class Config :
         defaults = {
             'cflags': '',
             'ldflags': '',
+            'valgrind_supp_files': '',
         }
         self.cfgfile = os.path.realpath(cfgfile)
         parser = configparser.ConfigParser(defaults=defaults)
@@ -41,6 +42,7 @@ class Config :
         self.modules = parser['DEFAULT']['modules'].split()
         self.cflags = parser['DEFAULT']['cflags']
         self.ldflags = parser['DEFAULT']['ldflags']
+        self.valgrind_supp_files = parser['DEFAULT']['valgrind_supp_files'].split()
 
 # Writer:
 class Writer :
@@ -855,11 +857,16 @@ def _proc_gen_main (cfg, main_c) :
     w.write('mainwrap',
             'int main ( int argc, char **argv )\n',
             '{\n',
+            '  static char *supp_files[] = {\n',
+            ''.join('  "%s",\n' % f for f in cfg.valgrind_supp_files),
+            '  NULL',
+            '  };\n'
             '  PifConfig *config = malloc(sizeof(PifConfig));\n',
             '  memset(config, 0, sizeof(PifConfig));\n',
             '  config->argc = argc;\n',
             '  config->argv = argv;\n',
             '  config->main_func = _main;\n',
+            '  config->valgrind_supp_files = supp_files;\n',
             '  return piftest_main(config);\n',
             '}\n')
     # main

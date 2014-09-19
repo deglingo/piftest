@@ -14,3 +14,5 @@ modules = @PIFTEST_TEST_MODULES@
 cflags = -I@top_srcdir@/piftest
 
 ldflags = -L@top_builddir@/piftest -lpiftest
+
+valgrind_supp_files = @srcdir@/piftest.supp

@@ -87,12 +87,21 @@ struct _PifSuite
  */
 static char **_valgrind_command ( PifConfig *config )
 {
-  int cmdsize = 16;
+  int cmdsize = 32;
   char **cmd = malloc(sizeof(char *) * cmdsize);
+  char **supp;
   int nargs = 0;
   cmd[nargs++] = "valgrind";
+  cmd[nargs++] = "--quiet";
   cmd[nargs++] = "--leak-check=yes";
+  cmd[nargs++] = "--fullpath-after=";
   cmd[nargs++] = "--gen-suppressions=all";
+  for (supp = config->valgrind_supp_files; *supp; supp++) {
+    /* [FIXME] assert nargs < cmdsize */
+    char *opt = malloc(strlen("--suppressions=") + strlen(*supp) + 1);
+    sprintf(opt, "--suppressions=%s", *supp);
+    cmd[nargs++] = opt;
+  }
   cmd[nargs++] = config->argv[0];
   cmd[nargs++] = "-R";
   cmd[nargs++] = NULL;
@@ -106,18 +115,25 @@ static char **_valgrind_command ( PifConfig *config )
 int piftest_main ( PifConfig *config )
 {
   int r;
-  /* if (config->argc > 1 && !strcmp(config->argv[1], "-R")) */
-  /*   { */
+  if (config->argc > 1 && !strcmp(config->argv[1], "-R"))
+    {
       r = config->main_func();
       return r;
-  /*   } */
-  /* else */
-  /*   { */
-  /*     char **cmd = _valgrind_command(config); */
-  /*     execvp("valgrind", cmd); */
-  /*     fprintf(stderr, "exec(valgrind) failed!\n"); */
-  /*     abort(); */
-  /*   } */
+    }
+  else
+    {
+      char **cmd = _valgrind_command(config);
+      /* { */
+      /*   char **a; */
+      /*   fprintf(stderr, ">"); */
+      /*   for (a = cmd; *a; a++) */
+      /*     fprintf(stderr, " %s", *a); */
+      /*   fprintf(stderr, "\n"); */
+      /* } */
+      execvp("valgrind", cmd);
+      fprintf(stderr, "exec(valgrind) failed!\n");
+      abort();
+    }
 }
 
 

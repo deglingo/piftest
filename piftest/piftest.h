@@ -22,6 +22,7 @@ struct _PifConfig
   int argc;
   char **argv;
   PifMainFunc main_func;
+  char **valgrind_supp_files;
 };
 
 
