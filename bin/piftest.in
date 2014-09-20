@@ -205,6 +205,8 @@ class Parser :
         ('LE', r'<='),
         ('DOT', r'\.'),
         ('NOT', r'!'),
+        ('TEST', r'\?'),
+        ('COLON', r':'),
         ('EQUAL', r'='),
         ('STAR', r'\*'),
         ('MINUS', r'-'),
