@@ -20,6 +20,16 @@
   pif_check(__FILE__, __LINE__,                 \
             (expr), sexpr, values)
 
+#define PIF_CHECK_EQ(a, b) do {                 \
+    int _pif_a = (a);                           \
+    int _pif_b = (b);                           \
+    _PIF_CHECK(_pif_a == _pif_b,                \
+               "( " #a " ) == ( " #b " )",      \
+               #a, "i", _pif_a,                 \
+               #b, "i", _pif_b,                 \
+               NULL);                           \
+  } while (0)
+
 #define PIF_CHECK_EQ_STR(a, b) do {           \
   const char *_pif_a = (a);                         \
   const char *_pif_b = (b);                         \

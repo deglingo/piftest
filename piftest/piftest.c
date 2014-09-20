@@ -267,6 +267,9 @@ void pif_check ( const char *fname,
       const char *vtp = va_arg(args, const char *);
       switch(vtp[0])
         {
+        case 'i':
+          fprintf(stderr, "%d", va_arg(args, int));
+          break;
         case 's':
           fprintf(stderr, "%s", va_arg(args, const char *));
           break;

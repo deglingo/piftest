@@ -12,3 +12,9 @@ test {
   int *p2 = &v;
   PIF_CHECK_EQ_PTR(p1, p2);
 }
+
+test {
+  int a = 2;
+  int b = 2;
+  PIF_CHECK_EQ(a, b);
+}
