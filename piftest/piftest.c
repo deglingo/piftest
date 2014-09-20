@@ -93,7 +93,13 @@ static char **_valgrind_command ( PifConfig *config )
   int nargs = 0;
   cmd[nargs++] = "valgrind";
   cmd[nargs++] = "--quiet";
+  cmd[nargs++] = "--tool=memcheck";
   cmd[nargs++] = "--leak-check=yes";
+  cmd[nargs++] = "--show-possibly-lost=yes";
+  cmd[nargs++] = "--leak-resolution=high";
+  cmd[nargs++] = "--show-reachable=yes";
+  cmd[nargs++] = "--undef-value-errors=yes";
+  /* cmd[nargs++] = "--track-origins=yes"; */
   cmd[nargs++] = "--fullpath-after=";
   /* [FIXME] this option looks usefull but the produced traceback is
      not clear */
