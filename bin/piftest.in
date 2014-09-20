@@ -197,6 +197,8 @@ class Parser :
         ('ARROW', r'->'),
         ('AND', r'&&'),
         ('OR', r'\|\|'),
+        ('PLUSPLUS', r'\+\+'),
+        ('MINUSMINUS', r'--'),
         ('EQUALEQUAL', r'=='),
         ('NOTEQUAL', r'!='),
         ('GE', r'>='),
@@ -472,8 +474,8 @@ class ASTVisitor :
         self.context.teardown_stack = ()
         self.writer = Writer()
         self.writer.section('top')
-        self.writer.section('headers')
         self.writer.section('includes')
+        self.writer.section('headers')
         self.writer.section('typedefs')
         self.writer.section('datadefs')
         self.writer.section('fndecls')
