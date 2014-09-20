@@ -5,3 +5,10 @@ test {
   char *b = "abc";
   PIF_CHECK_EQ_STR(a, b);
 }
+
+test {
+  int v = 0;
+  int *p1 = &v;
+  int *p2 = &v;
+  PIF_CHECK_EQ_PTR(p1, p2);
+}

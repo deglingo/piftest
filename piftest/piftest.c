@@ -264,6 +264,9 @@ void pif_check ( const char *fname,
         case 's':
           fprintf(stderr, "%s", va_arg(args, const char *));
           break;
+        case 'p':
+          fprintf(stderr, "%p", va_arg(args, void *));
+          break;
         default:
           fprintf(stderr, "\n[TODO] vtp '%s'", vtp);
           abort();

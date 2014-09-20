@@ -30,6 +30,16 @@
              NULL);                             \
   } while (0)
 
+#define PIF_CHECK_EQ_PTR(a, b) do {             \
+    void *_pif_a = (void *) (a);                \
+    void *_pif_b = (void *) (b);                \
+    _PIF_CHECK(_pif_a == _pif_b,                \
+               "( " #a " ) == ( " #b " ) ",     \
+               #a, "p", _pif_a,                 \
+               #b, "p", _pif_b,                 \
+               NULL);                           \
+  } while (0)
+
 /* [FIXME] add the gcc null-term attribute */
 void pif_check ( const char *fname,
                  int lineno,
