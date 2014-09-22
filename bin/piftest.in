@@ -32,6 +32,7 @@ class Config :
         defaults = {
             'cflags': '',
             'ldflags': '',
+            'extra_sources': [],
             'valgrind_supp_files': '',
         }
         self.cfgfile = os.path.realpath(cfgfile)
@@ -42,6 +43,14 @@ class Config :
         self.modules = parser['DEFAULT']['modules'].split()
         self.cflags = parser['DEFAULT']['cflags']
         self.ldflags = parser['DEFAULT']['ldflags']
+        self.extra_sources = parser['DEFAULT']['extra_sources'].split()
+        self.extra_c = []
+        for fname in self.extra_sources :
+            base, ext = os.path.splitext(fname)
+            if ext == '.c' :
+                self.extra_c.append(base)
+            else :
+                assert 0, (base, ext)
         self.valgrind_supp_files = parser['DEFAULT']['valgrind_supp_files'].split()
 
 # Writer:
@@ -753,7 +762,7 @@ def proc_gen_makefile (cfg) :
     try: os.mkdir(depsdir)
     except OSError as exc:
         if exc.errno != errno.EEXIST : raise
-    for base in [cfg.suite] + cfg.modules :
+    for base in [cfg.suite] + cfg.modules + cfg.extra_c :
         pofile = os.path.join(depsdir, base+'.Po')
         if not os.path.exists(pofile) :
             with open(pofile, 'wt') as f :
@@ -762,6 +771,8 @@ def proc_gen_makefile (cfg) :
     w = Writer()
     s = w.get_section('')
     s.write('# %s\n' % makefile)
+    # VPATH
+    s.write('VPATH = @%s@\n' % 'srcdir')
     # define some vars
     def subst (n) :
         return '%s = @%s@\n' % (n, n)
@@ -806,14 +817,14 @@ def proc_gen_makefile (cfg) :
                  ('rm -rf .libs .deps',
                   'rm -f %s *.c *.o *.lo *.stamp-h piftest.conf' % cfg.suite))
     # test suite program
-    s.write_rule(cfg.suite, [cfg.suite+'.o'] + [m+'.o' for m in cfg.modules],
+    s.write_rule(cfg.suite, [cfg.suite+'.o'] + [m+'.o' for m in cfg.modules] + [m+'.o' for m in cfg.extra_c],
                  '$(LIBTOOL) --tag=CC --mode=link $(CCLD) -o $@ $^ $(LDFLAGS) %s' % cfg.ldflags)
     # object compilation
     s.write_rule('.c.o', None,
                  'source=$< object=$@ $(CCDEPMODE) DEPDIR=.deps libtool=yes $(depcomp) $(LIBTOOL) --tag=CC --mode=compile $(CC) -c -o $@ $< $(CFLAGS) %s' % cfg.cflags)
     # include deps
     s.write('include .deps/%s.Po\n' % cfg.suite)
-    for m in cfg.modules :
+    for m in cfg.modules + cfg.extra_c :
         s.write('include .deps/%s.Po\n' % m)
     # sources generation
     s.write_rule([cfg.suite+'.c'] + [m+'.c' for m in cfg.modules],
@@ -946,10 +957,10 @@ def proc_gen_po (cfg) :
     try: os.makedirs(depsdir)
     except OSError as exc:
         if exc.errno != errno.EEXIST : raise
-    for fname in [cfg.suite] + cfg.modules :
+    for fname in [cfg.suite] + cfg.modules + cfg.extra_c :
         pofile = os.path.join(depsdir, fname+'.Po')
         with open(pofile, 'wt') as f :
-            f.write('# dummy\n')
+            f.write('%s.o: %s.c\n' % (fname, fname))
 
 # exec
 if __name__ == '__main__' :
