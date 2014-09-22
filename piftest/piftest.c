@@ -103,7 +103,7 @@ static char **_valgrind_command ( PifConfig *config )
   cmd[nargs++] = "--fullpath-after=";
   /* [FIXME] this option looks usefull but the produced traceback is
      not clear */
-  /* cmd[nargs++] = "--track-fds=yes"; */
+  cmd[nargs++] = "--track-fds=yes";
   cmd[nargs++] = "--num-callers=50";
   cmd[nargs++] = "--show-below-main=yes";
   cmd[nargs++] = "--read-var-info=yes";
@@ -130,6 +130,10 @@ int piftest_main ( PifConfig *config )
   if (config->argc > 1 && !strcmp(config->argv[1], "-R"))
     {
       r = config->main_func();
+      /* close standard fds so they are not reported by valgrind */
+      close(0);
+      close(1);
+      close(2);
       return r;
     }
   else
