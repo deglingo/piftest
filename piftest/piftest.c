@@ -14,6 +14,9 @@
 /* [REMOVEME] */
 #define MAX_TESTS 1024
 
+/* [REMOVEME] */
+/* #define VERBOSE */
+
 typedef enum _PifNodeType PifNodeType;
 typedef union _PifNode PifNode;
 typedef struct _PifNodeAny PifNodeAny;
@@ -232,14 +235,21 @@ void pif_suite_run ( PifSuite *suite,
       } else {
         data = NULL;
       }
+#ifdef VERBOSE
+      fprintf(stderr, "== %s :\n", suite->tests[n].path);
+#endif
       suite->tests[n].setup(data);
       suite->tests[n].func(data);
       suite->tests[n].teardown(data);
+#ifndef VERBOSE
       fprintf(stderr, ".");
+#endif
       if (data)
         free(data);
     }
+#ifndef VERBOSE
   fprintf(stderr, "\n");
+#endif
 }
 
 
