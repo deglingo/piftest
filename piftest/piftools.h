@@ -8,17 +8,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define PIF_CHECK(expr) do {                                \
-    if (!(expr)) {                                          \
-      fprintf(stderr, "%s:%d: test failed: `" #expr "'\n",  \
-              __FILE__, __LINE__);                          \
-      exit(1);                                              \
-    }                                                       \
-  } while (0)
-
 #define _PIF_CHECK(expr, sexpr, values...)      \
   pif_check(__FILE__, __LINE__,                 \
             (expr), sexpr, values)
+
+#define PIF_CHECK(expr) do {                    \
+    int _pif_expr = (expr) ? 1 : 0;             \
+    _PIF_CHECK(_pif_expr,                       \
+               #expr,                           \
+               #expr, "i", _pif_expr,           \
+               NULL);                           \
+  } while (0)
 
 #define PIF_CHECK_EQ(a, b) do {                 \
     int _pif_a = (a);                           \

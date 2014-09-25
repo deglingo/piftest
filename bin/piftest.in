@@ -315,8 +315,11 @@ class Parser :
                 elif tok.val == 'test' :
                     test = self.parse_test()
                     body.append(test)
-                    assert test[2] == '', test # [todo]
-                    anonymous.append(index)
+                    if test[2] == '' :
+                        anonymous.append(index)
+                    else :
+                        assert test[2] not in names, test[2]
+                        names.add(test[2])
                     index += 1
                 else :
                     self.error("unexpected token: '%s' (%s)" %
@@ -374,7 +377,13 @@ class Parser :
     # parse_test:
     def parse_test (self) :
         self.lex('IDENT', 'test')
-        name = '' # [fixme]
+        # name
+        tok = self.look()
+        if tok.tp == 'IDENT' :
+            self.lex()
+            name = tok.val
+        else :
+            name = ''
         code = self.parse_code()
         return ('test', (), name, code)
 
