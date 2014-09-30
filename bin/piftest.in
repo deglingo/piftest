@@ -342,19 +342,8 @@ class Parser :
     # parse_header:
     def parse_header (self) :
         self.lex('IDENT', 'header')
-        self.lex('OPEN_BRACE')
-        code = []
-        depth = 1
-        while True :
-            tok = self.lex(raw=True)
-            if tok.tp == 'OPEN_BRACE' :
-                depth += 1
-            elif tok.tp == 'CLOSE_BRACE' :
-                depth -= 1
-                if depth == 0 :
-                    break
-            code.append(tok.val)
-        return ('header', (), ''.join(code))
+        code = self.parse_code()
+        return ('header', (), code)
         
     # parse_data:
     def parse_data (self) :
@@ -537,7 +526,7 @@ class ASTVisitor :
         self.context.unit_path = path
         # write headers
         for block in headers :
-            self.writer.write('headers', block[2])
+            self.write_code('headers', block[2])
         # register the data block
         if data is not None :
             self.context.data_stack = self.context.data_stack + (data,)
