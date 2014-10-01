@@ -270,10 +270,17 @@ class Parser :
     # parse_unit:
     def parse_unit (self) :
         self.lex('IDENT', 'unit')
+        # name
+        tok = self.look()
+        if tok.tp == 'IDENT' :
+            self.lex()
+            name = tok.val
+        else :
+            name = ''
         self.lex('OPEN_BRACE')
         h, d, s, t, b = self.parse_unit_body('CLOSE_BRACE')
         self.lex('CLOSE_BRACE')
-        return ('unit', (), '', h, d, s, t, b)
+        return ('unit', (), name, h, d, s, t, b)
 
     # parse_unit_body:
     def parse_unit_body (self, end) :
@@ -310,8 +317,11 @@ class Parser :
                 elif tok.val == 'unit' :
                     unit = self.parse_unit()
                     body.append(unit)
-                    assert unit[2] == '', unit # [todo]
-                    anonymous.append(index)
+                    if unit[2] == '' :
+                        anonymous.append(index)
+                    else :
+                        assert unit[2] not in names, unit[2]
+                        names.add(unit[2])
                     index += 1
                 elif tok.val == 'test' :
                     test = self.parse_test()
