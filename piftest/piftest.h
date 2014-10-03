@@ -12,6 +12,7 @@ typedef int (* PifMainFunc) ( void );
 typedef void (* PifTestFunc) ( void *data );
 typedef void (* PifSetupFunc) ( void *data );
 typedef void (* PifTeardownFunc ) ( void *data );
+typedef void (* PifGlobalSetupFunc ) ( void );
 
 
 
@@ -38,6 +39,8 @@ void pif_suite_register_test ( PifSuite *suite,
                                int data_size,
                                PifSetupFunc setup,
                                PifTeardownFunc teardown );
+void pif_suite_register_global_setup ( PifSuite *suite,
+                                       PifGlobalSetupFunc func );
 void pif_suite_run ( PifSuite *suite,
                      const char *path );
 

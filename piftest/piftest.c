@@ -13,6 +13,7 @@
 
 /* [REMOVEME] */
 #define MAX_TESTS 1024
+#define MAX_GLOBAL_SETUP 16
 
 /* [REMOVEME] */
 /* #define VERBOSE */
@@ -79,6 +80,8 @@ struct _PifSuite
 {
   char *name;
 
+  PifGlobalSetupFunc global_setup[MAX_GLOBAL_SETUP];
+  int global_setup_count;
   /* [REMOVEME] */
   PifTest tests[MAX_TESTS];
   int n_tests;
@@ -163,6 +166,7 @@ PifSuite *pif_suite_new ( const char *name )
 {
   PifSuite *suite;
   suite = malloc(sizeof(PifSuite));
+  memset(suite, 0, sizeof(PifSuite));
   suite->name = strdup(name);
   suite->n_tests = 0;
   return suite;
@@ -219,6 +223,20 @@ void pif_suite_register_test ( PifSuite *suite,
 
 
 
+/* pif_suite_register_global_setup:
+ */
+void pif_suite_register_global_setup ( PifSuite *suite,
+                                       PifGlobalSetupFunc func )
+{
+  if (suite->global_setup_count >= MAX_GLOBAL_SETUP) {
+    fprintf(stderr, "[TODO] MAX_GLOBAL_SETUP reached\n");
+    abort();
+  } 
+  suite->global_setup[suite->global_setup_count++] = func;
+}
+
+
+
 /* pif_suite_run:
  */
 void pif_suite_run ( PifSuite *suite,
@@ -226,6 +244,10 @@ void pif_suite_run ( PifSuite *suite,
 {
   int n;
   fprintf(stderr, "%s: running %d test(s)...\n", suite->name, suite->n_tests);
+  /* global setups */
+  for (n = 0; n < suite->global_setup_count; n++)
+    suite->global_setup[n]();
+  /* tests */
   for (n = 0; n < suite->n_tests; n++)
     {
       void *data;

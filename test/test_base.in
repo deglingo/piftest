@@ -1,4 +1,16 @@
 /* -*- c -*- */
 
+header
+{
+  static int global_setup_count = 0;
+}
+
+global_setup
+{
+  /* fprintf(stderr, "\nGLOBAL SETUP!\n"); */
+  global_setup_count++;
+}
+
+test { PIF_CHECK_EQ(global_setup_count, 1); }
 test { PIF_CHECK(1); }
 test { PIF_CHECK(2); }
